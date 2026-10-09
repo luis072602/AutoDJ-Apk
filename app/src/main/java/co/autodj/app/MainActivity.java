@@ -1,11 +1,14 @@
 package co.autodj.app;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
-import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -27,8 +30,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Con la pantalla apagada Android frena la página y la mezcla se corta
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        // Android 13+ pide permiso para mostrar la notificación de lo que suena
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
+        }
 
         final YouTube youTube = new YouTube(getCacheDir());
         final WebViewAssetLoader assets = new WebViewAssetLoader.Builder()
@@ -65,6 +71,12 @@ public class MainActivity extends Activity {
             }
         });
 
+        // Puente con la interfaz: ella avisa qué suena; los botones de la notificación vuelven a ella
+        web.addJavascriptInterface(new Bridge(), "AutoDJNative");
+        PlaybackService.controls = c -> runOnUiThread(() -> {
+            if (web != null) web.evaluateJavascript("window.autodjCommand&&window.autodjCommand('" + c + "')", null);
+        });
+
         setContentView(web);
         web.loadUrl("https://" + HOST + "/www/index.html");
     }
@@ -74,9 +86,29 @@ public class MainActivity extends Activity {
         moveTaskToBack(true);   // «atrás» minimiza en vez de cerrar y cortar la música
     }
 
+    /** Lo que la interfaz (js/native.js) puede pedirle a la app. Llega en un hilo aparte. */
+    private final class Bridge {
+        @JavascriptInterface
+        public void nowPlaying(final String vid, final String title, final String artist, final boolean playing,
+                               final double durMs, final double posMs, final double rate) {
+            runOnUiThread(() -> PlaybackService.show(MainActivity.this, vid, title, artist, playing,
+                    (long) durMs, (long) posMs, (float) rate));
+        }
+
+        @JavascriptInterface
+        public void stopped() {
+            runOnUiThread(PlaybackService::hide);
+        }
+    }
+
     @Override
     protected void onDestroy() {
-        if (web != null) web.destroy();
+        PlaybackService.controls = null;
+        PlaybackService.hide();
+        if (web != null) {
+            web.destroy();
+            web = null;
+        }
         super.onDestroy();
     }
 }

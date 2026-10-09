@@ -19,7 +19,7 @@ Requiere Android 8.0 o superior.
 - Busca una canción o artista, toca una búsqueda rápida, o pega el enlace de una lista de YouTube.
 - Toca una canción para agregarla (o «Agregar todas») y pulsa **Reproducir**. La mezcla es automática.
 - **Mezclar ya** fuerza el cruce; tocar una canción de la lista mezcla hacia ella; tocar la onda salta a ese punto.
-- La pantalla se mantiene encendida mientras la app está abierta: si se apaga, Android corta la mezcla.
+- Sigue sonando con la pantalla apagada. La canción aparece en la barra de notificaciones y en la pantalla de bloqueo, con pausa y «mezclar ya».
 
 ## Cómo está hecha
 
@@ -28,6 +28,7 @@ Requiere Android 8.0 o superior.
       MainActivity.java          muestra la interfaz en un WebView y desvía las rutas /api/…
       YouTube.java               atiende /api/search, /api/playlist y /api/audio en el teléfono
       OkDownloader.java          conexión de red para NewPipeExtractor
+      PlaybackService.java       notificación de lo que suena y reproducción con pantalla apagada
     .github/workflows/build.yml  GitHub compila el APK en cada cambio y lo publica en Releases
     dev_server.py                imita /api/… en el PC para probar la interfaz en un navegador
 

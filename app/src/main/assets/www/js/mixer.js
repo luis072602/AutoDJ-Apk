@@ -6,7 +6,16 @@ import { load, nextTrack, housekeeping } from './library.js';
 const curve = f => Float32Array.from({ length: 64 }, (_, i) => f(i / 63));
 const OUT = curve(x => Math.cos(x * Math.PI / 2)), IN = curve(x => Math.sin(x * Math.PI / 2));
 
-export const pos = d => d.off + (S.ctx.currentTime - d.at) * d.rate;
+const MAX_SHIFT = .05;   // cambio máximo de velocidad para igualar BPM: más que esto deforma la voz
+const GLIDE = 8;         // segundos que tarda un deck en volver a su velocidad original tras la mezcla
+
+export function pos(d) {
+  const g = d.glide;
+  if (!g) return d.off + (S.ctx.currentTime - d.at) * d.rate;
+  // Durante el regreso la velocidad baja en línea recta de g.r a 1; después sigue a velocidad normal
+  const t = S.ctx.currentTime - g.t0, x = clamp(t, 0, g.T);
+  return g.off + g.r * x + (1 - g.r) * x * x / (2 * g.T) + Math.max(0, t - g.T);
+}
 export const isRunning = () => !!(S.ctx && S.ctx.state === 'running' && S.cur);
 
 function makeDeck(t, rate, off, side = S.flip++ % 2) {
@@ -24,12 +33,23 @@ function stopDeck(d) {
   try { d.g.disconnect(); } catch {}
 }
 
+// Terminada la mezcla, la canción vuelve poco a poco a su velocidad (y tono) original
+function release(d) {
+  if (d.rate === 1) return;
+  const now = S.ctx.currentTime;
+  d.glide = { t0: now, T: GLIDE, r: d.rate, off: pos(d) };
+  d.src.playbackRate.setValueAtTime(d.rate, now);
+  d.src.playbackRate.linearRampToValueAtTime(1, now + GLIDE);
+  d.rate = 1;
+}
+
 const snap = (t, x, m) => { const B = 240 / t.bpm; return t.b0 + Math[m]((x - t.b0) / B) * B; };
 
 function pickRate(o, t) {
   if (!o || !S.sync || o.t.weak || t.weak) return 1;
   const r = o.t.bpm * o.rate / t.bpm, c = [r, r * 2, r / 2].sort((a, b) => Math.abs(a - 1) - Math.abs(b - 1))[0];
-  return clamp(c, .92, 1.08);
+  // Cambiar la velocidad también cambia el tono: si hace falta demasiado, mejor no igualar y cruzar por tiempo
+  return Math.abs(c - 1) > MAX_SHIFT ? 1 : c;
 }
 
 // Decide cuándo sale la actual, desde dónde entra la siguiente y cuántos tiempos dura el cruce
@@ -136,7 +156,7 @@ export function tick() {
   housekeeping();
   if (S.ctx.state !== 'running') return;
   if (S.mix) {
-    if (S.ctx.currentTime >= S.mix.end) { stopDeck(S.mix.o); S.cur = S.mix.nd; S.last = S.cur.t; S.mix = null; emit(); }
+    if (S.ctx.currentTime >= S.mix.end) { stopDeck(S.mix.o); S.cur = S.mix.nd; release(S.cur); S.last = S.cur.t; S.mix = null; emit(); }
     return;
   }
   const o = S.cur;

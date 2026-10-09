@@ -4,11 +4,13 @@ import { tick, isRunning } from './mixer.js';
 import { initEq } from './eq.js';
 import { initYouTube } from './youtube.js';
 import { initUi, paint } from './ui.js';
+import { initNative } from './native.js';
 
 window.autodj = S; // para inspeccionar el estado desde la consola del navegador
 initEq();
 initYouTube();
 initUi();
+initNative();
 setInterval(tick, 200);
 
 // Mientras suena, se pide al aparato que no apague la pantalla: en celulares, al bloquearse se corta la mezcla.
