@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0c14">
+<title>AutoDJ</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <span class="logo" aria-hidden="true"></span>
+    <h1>AutoDJ</h1>
+    <span class="tag">mezcla automática por BPM</span>
+  </div>
+  <div class="top-r">
+    <label class="lbl">Volumen <input type="range" id="vol" min="0" max="1" step=".01" value=".9"></label>
+  </div>
+</header>
+
+<main class="app">
+
+  <aside class="side">
+    <section class="panel" aria-label="Ecualizador">
+      <h2>Ecualizador</h2>
+      <canvas id="spec" aria-hidden="true"></canvas>
+      <div class="bands" id="bands"></div>
+      <div class="row" id="presets"></div>
+      <p class="note">Actúa sobre todo lo que suena. Doble clic en una banda la devuelve a 0.</p>
+    </section>
+
+    <section class="panel" aria-label="Ambiente">
+      <h2>Ambiente</h2>
+      <div class="scenes" id="scenes"></div>
+      <p class="note" id="sceneD"></p>
+      <label class="lbl stack">Duración del cruce <b id="mixV">auto</b>
+        <input type="range" id="mixT" min="2" max="30" value="14" disabled>
+      </label>
+      <label class="lbl"><input type="checkbox" id="sync" checked> Igualar BPM</label>
+      <label class="lbl"><input type="checkbox" id="loop" checked> Repetir lista</label>
+    </section>
+  </aside>
+
+  <div class="col">
+
+    <section class="panel console" aria-label="Consola">
+      <div class="decks">
+        <div class="deck" id="dA">
+          <div class="rec"></div>
+          <div class="dn" id="nA">Deck A</div>
+          <div class="dm" id="mA">—</div>
+        </div>
+        <div class="center">
+          <div class="status" id="status">Sin reproducir</div>
+          <div class="time" id="time">0:00 / 0:00</div>
+          <div class="xf" title="Crossfader"><span>A</span><div class="xf-track"><i id="xf"></i></div><span>B</span></div>
+        </div>
+        <div class="deck" id="dB">
+          <div class="rec"></div>
+          <div class="dn" id="nB">Deck B</div>
+          <div class="dm" id="mB">—</div>
+        </div>
+      </div>
+      <canvas id="wave" title="Clic para saltar a ese punto de la canción"></canvas>
+      <div class="row transport">
+        <button class="pri" id="play">▶ Reproducir</button>
+        <button id="skip">Mezclar ya ⏭</button>
+      </div>
+      <div class="log" id="log" role="status"></div>
+    </section>
+
+    <section class="panel" aria-label="Buscar música">
+      <div class="row between">
+        <h2>Música</h2>
+        <span class="credit">YouTube Music</span>
+      </div>
+      <div class="row">
+        <input id="aq" type="search" placeholder="Canción, artista o enlace de una lista de YouTube" aria-label="Buscar música">
+        <button id="ago">Buscar</button>
+      </div>
+      <div class="scenes" id="genres" aria-label="Búsquedas rápidas"></div>
+      <div id="resBox" hidden>
+        <div class="row between">
+          <span class="dm" id="resT"></span>
+          <button class="mini" id="addAll">Agregar todas</button>
+        </div>
+        <div class="scroll short"><ul class="list" id="res"></ul></div>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Lista de reproducción">
+      <div class="row between">
+        <h2>Lista de reproducción <span class="dm" id="cnt"></span></h2>
+        <div class="row">
+          <label class="btn" for="file" hidden>+ Archivos</label>
+          <button id="scan" title="Descarga y mide cada canción (BPM, intro y final) por adelantado">Analizar todo</button>
+          <button id="sort">Ordenar para el ambiente</button>
+          <button id="clear">Vaciar</button>
+        </div>
+      </div>
+      <input type="file" id="file" accept="audio/*" multiple hidden>
+      <div class="drop" id="drop" hidden>También puedes arrastrar aquí tus archivos de audio (mp3, wav, m4a…)</div>
+      <input type="search" id="q" placeholder="Buscar en la lista…" aria-label="Buscar en la lista">
+      <div class="scroll" id="sc"><ul class="list" id="list"></ul></div>
+    </section>
+
+  </div>
+</main>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

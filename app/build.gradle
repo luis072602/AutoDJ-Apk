@@ -1,0 +1,59 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Cada compilación en GitHub recibe un número mayor, así el teléfono la acepta como actualización
+def buildNo = (System.getenv('GITHUB_RUN_NUMBER') ?: '1') as int
+
+android {
+    namespace 'co.autodj.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'co.autodj.app'
+        minSdk 26          // Android 8.0
+        targetSdk 34
+        versionCode buildNo
+        versionName "0.1.${buildNo}"
+    }
+
+    // Firma fija guardada en el repositorio (la crea el flujo de GitHub la primera vez).
+    // Sin ella cada APK saldría con una firma distinta y habría que desinstalar para actualizar.
+    signingConfigs {
+        debug {
+            def ks = file('autodj.keystore')
+            if (ks.exists()) {
+                storeFile ks
+                storePassword 'autodj-apk'
+                keyAlias 'autodj'
+                keyPassword 'autodj-apk'
+            }
+        }
+    }
+
+    compileOptions {
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packaging {
+        resources {
+            excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE*', 'META-INF/NOTICE*', 'META-INF/AL2.0',
+                         'META-INF/LGPL2.1', 'META-INF/INDEX.LIST', 'META-INF/*.md', 'META-INF/*.kotlin_module']
+        }
+    }
+
+    lint {
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    // Si YouTube deja de funcionar, sube esta versión a la última de
+    // https://github.com/TeamNewPipe/NewPipeExtractor/releases
+    implementation 'com.github.teamnewpipe:NewPipeExtractor:v0.26.5'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs_nio:2.0.4'
+}
