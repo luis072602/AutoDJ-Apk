@@ -102,6 +102,16 @@ function showTab(name) {
   if (name === 'cola') scrollToCurrent();
 }
 
+// ---------- Mezcla automática ----------
+// Cuánto suena cada canción antes de pasar sola a la siguiente
+const AUTO = [[0, 'canción completa'], [120, 'cambia cada 2 min'], [90, 'cambia cada 90 s'], [60, 'cambia cada minuto']];
+function setAuto(sec) {
+  const opt = AUTO.find(a => a[0] === sec) || AUTO[0];
+  S.autoLen = opt[0];
+  $('#auto').innerHTML = 'Mezcla automática: <b>' + opt[1] + '</b>';
+  try { localStorage.setItem('adj_auto', opt[0]); } catch {}
+}
+
 // ---------- Eventos ----------
 function setScene(k) {
   const sc = SCENES[k];
@@ -127,6 +137,10 @@ export function initUi() {
   // Transporte
   $('#play').onclick = togglePlay;
   $('#skip').onclick = skip;
+  $('#auto').onclick = () => setAuto(AUTO[(AUTO.findIndex(a => a[0] === S.autoLen) + 1) % AUTO.length][0]);
+  let saved = 0;
+  try { saved = +localStorage.getItem('adj_auto') || 0; } catch {}
+  setAuto(saved);
   $('#vol').oninput = e => setVolume(+e.target.value);
   setVolume(+$('#vol').value);
   $('#wave').onclick = e => { if (S.cur) seek(e.offsetX / e.currentTarget.clientWidth * S.cur.t.dur); };

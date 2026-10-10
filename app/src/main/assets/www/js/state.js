@@ -23,6 +23,7 @@ export const S = {
   cue: null,       // canción pedida que aún se está cargando
   last: null,      // última canción que sonó (para saber cuál sigue)
   scene: 'variado', mixT: 14, sync: true, loop: true,
+  autoLen: 0,      // segundos que suena cada canción antes de mezclar sola; 0 = la canción completa
   flip: 0, nid: 0
 };
 

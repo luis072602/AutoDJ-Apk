@@ -162,7 +162,12 @@ export function tick() {
   const o = S.cur;
   if (!o || S.cue) return;
   const nt = nextTrack(), p = pos(o);
-  if (ready(nt)) { const pl = plan(o, nt, false); if ((pl.ms - p) / o.rate <= 3.2) go(pl); }
+  if (ready(nt)) {
+    // Con tiempo fijo por canción no se espera al final: al cumplirse se mezcla en el siguiente compás
+    const due = S.autoLen > 0 && S.ctx.currentTime - o.at >= S.autoLen;
+    const pl = plan(o, nt, due);
+    if (due || (pl.ms - p) / o.rate <= 3.2) go(pl);
+  }
   else if (p >= o.t.end || o.t.dur - p < .3) {
     // La actual terminó y la siguiente aún no está lista: se espera a que cargue
     if (nt) { stopDeck(o); S.cur = null; cue(nt); } else stop();

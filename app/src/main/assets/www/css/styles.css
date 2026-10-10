@@ -148,6 +148,8 @@ input[type=checkbox] { accent-color: var(--a); }
 .transport { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .transport button { min-height: 56px; font-size: 16px; font-weight: 600; }
 .transport #skip { background: var(--a); border-color: var(--a); color: #fff; }
+.transport .wide { grid-column: 1 / -1; min-height: 44px; font-size: 14px; font-weight: 400; color: var(--mut); }
+.transport .wide b { color: var(--fg); }
 
 /* ---------- Ambiente y búsquedas rápidas ---------- */
 .scenes { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -189,6 +191,12 @@ input[type=checkbox] { accent-color: var(--a); }
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .log.warn { color: var(--b); }
+
+/* ---------- Aviso de actualización ---------- */
+.update {
+  flex: none; display: block; margin: 2px 12px 4px; padding: 10px 14px; border-radius: 12px; text-align: center;
+  background: color-mix(in srgb, var(--a) 22%, var(--panel)); border: 1px solid var(--a); color: var(--fg); text-decoration: none; font-size: 14px;
+}
 
 /* ---------- Menú inferior ---------- */
 .tabs {

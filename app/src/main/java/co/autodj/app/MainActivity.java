@@ -95,6 +95,16 @@ public class MainActivity extends Activity {
                     (long) durMs, (long) posMs, (float) rate));
         }
 
+        /** Versión instalada, por ejemplo «0.1.7»: la interfaz la compara con la última publicada. */
+        @JavascriptInterface
+        public String version() {
+            try {
+                return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            } catch (Exception e) {
+                return "";
+            }
+        }
+
         @JavascriptInterface
         public void stopped() {
             runOnUiThread(PlaybackService::hide);
