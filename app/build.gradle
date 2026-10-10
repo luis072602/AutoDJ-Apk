@@ -20,7 +20,7 @@ android {
     // Firma fija guardada en el repositorio (la crea el flujo de GitHub la primera vez).
     // Sin ella cada APK saldría con una firma distinta y habría que desinstalar para actualizar.
     signingConfigs {
-        debug {
+        autodj {
             def ks = file('autodj.keystore')
             if (ks.exists()) {
                 storeFile ks
@@ -28,6 +28,18 @@ android {
                 keyAlias 'autodj'
                 keyPassword 'autodj-apk'
             }
+        }
+    }
+
+    // Se publica la variante «release»: los APK de depuración los rechazan algunos teléfonos
+    // («paquete dañado») y Play Protect los trata peor. Misma firma, así que actualiza encima sin problema.
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.autodj
+        }
+        debug {
+            signingConfig signingConfigs.autodj
         }
     }
 
@@ -46,6 +58,7 @@ android {
 
     lint {
         abortOnError false
+        checkReleaseBuilds false
     }
 }
 

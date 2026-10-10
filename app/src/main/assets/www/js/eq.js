@@ -1,5 +1,5 @@
 // Panel del ecualizador: 5 bandas, ajustes rápidos y analizador de espectro.
-import { S, $, $$ } from './state.js';
+import { S, $, $$, bus } from './state.js';
 import { BANDS, gains, setGains } from './audio.js';
 
 const PRESETS = {
@@ -45,6 +45,7 @@ export function fit(c) {
 }
 
 let data = null, colors = null;
+bus.addEventListener('theme', () => colors = null);
 export function drawSpectrum() {
   const c = $('#spec');
   if (!fit(c)) return;

@@ -131,7 +131,9 @@ export function initUi() {
     setTimeout(() => { pending = false; renderList(); }, 30);
   });
 
-  $('#tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab); };
+  // «Pro» no es una sección más: abre la consola a pantalla completa (lo maneja pro.js)
+  $('#tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b && b.dataset.tab !== 'pro') showTab(b.dataset.tab); };
+  bus.addEventListener('theme', () => colors = null);
   $('#miniPlay').onclick = togglePlay;
 
   // Transporte

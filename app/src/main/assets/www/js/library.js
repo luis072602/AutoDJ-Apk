@@ -88,7 +88,7 @@ export function housekeeping() {
   if (!S.tracks.length) return;
   const next = upcoming(AHEAD);
   for (const t of next) if (!ready(t) && !t.loading && (t.file || online())) load(t);
-  const keep = new Set([S.cur && S.cur.t, S.mix && S.mix.nd.t, S.mix && S.mix.o.t, S.cue, ...next]);
+  const keep = new Set([S.cur && S.cur.t, S.mix && S.mix.nd.t, S.mix && S.mix.o.t, S.cue, ...next, ...S.proKeep]);
   for (const t of S.tracks) if (t.buffer && !t.loading && !keep.has(t)) t.buffer = null;
 }
 

@@ -19,6 +19,8 @@ Requiere Android 8.0 o superior.
 - Busca una canción o artista, toca una búsqueda rápida, o pega el enlace de una lista de YouTube.
 - Toca una canción para agregarla (o «Agregar todas») y pulsa **Reproducir**. La mezcla es automática.
 - **Mezclar ya** fuerza el cruce; tocar una canción de la lista mezcla hacia ella; tocar la onda salta a ese punto.
+- **Pro** abre una consola manual de dos decks en horizontal: tempo, sync, cue, loops, hot cues, ecualizador por canal, crossfader, efectos y sonidos.
+- En **Ajustes** se cambia el color de la interfaz y se ve la cuenta y la versión.
 - Sigue sonando con la pantalla apagada. La canción aparece en la barra de notificaciones y en la pantalla de bloqueo, con pausa y «mezclar ya».
 
 ## Cuentas

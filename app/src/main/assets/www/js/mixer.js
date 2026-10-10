@@ -154,6 +154,7 @@ export function seek(x) {
 export function tick() {
   if (!S.ctx) return;
   housekeeping();
+  if (S.pro) return;   // en el Modo Pro mezcla el usuario
   if (S.ctx.state !== 'running') return;
   if (S.mix) {
     if (S.ctx.currentTime >= S.mix.end) { stopDeck(S.mix.o); S.cur = S.mix.nd; release(S.cur); S.last = S.cur.t; S.mix = null; emit(); }

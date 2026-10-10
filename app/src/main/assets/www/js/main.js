@@ -6,6 +6,8 @@ import { initYouTube } from './youtube.js';
 import { initUi, paint } from './ui.js';
 import { initNative } from './native.js';
 import { initAuth } from './auth.js';
+import { initSettings } from './settings.js';
+import { initPro, paintPro } from './pro.js';
 
 window.autodj = S; // para inspeccionar el estado desde la consola del navegador
 initEq();
@@ -13,6 +15,8 @@ initYouTube();
 initUi();
 initNative();
 initAuth();
+initSettings();
+initPro();
 setInterval(tick, 200);
 
 // Mientras suena, se pide al aparato que no apague la pantalla: en celulares, al bloquearse se corta la mezcla.
@@ -26,4 +30,4 @@ async function keepAwake() {
 }
 setInterval(keepAwake, 2000);
 document.addEventListener('visibilitychange', keepAwake);
-(function loop() { paint(); requestAnimationFrame(loop); })();
+(function loop() { paint(); paintPro(); requestAnimationFrame(loop); })();

@@ -38,25 +38,34 @@ jobs:
           fi
 
       - name: Compilar
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: gradle assembleRelease --no-daemon --stacktrace
 
       - name: Preparar APK
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk AutoDJ.apk
+          cp app/build/outputs/apk/release/app-release.apk AutoDJ.apk
           echo "0.1.${{ github.run_number }}" > version.txt   # la app lo lee para saber si hay actualización
+
+      # Comprueba que el APK esté bien firmado y no sea de depuración antes de publicarlo
+      - name: Verificar APK
+        run: |
+          TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$TOOLS/apksigner" verify --verbose --print-certs AutoDJ.apk | head -12
+          "$TOOLS/aapt" dump badging AutoDJ.apk | grep -E "^package|sdkVersion|targetSdkVersion|application-debuggable" || true
+          if "$TOOLS/aapt" dump badging AutoDJ.apk | grep -q "application-debuggable"; then echo "El APK es de depuración"; exit 1; fi
+          sha256sum AutoDJ.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: AutoDJ-apk
           path: AutoDJ.apk
 
-      # Enlace fijo de descarga: …/releases/latest/download/AutoDJ.apk
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ultima
-          name: AutoDJ 0.1.${{ github.run_number }}
-          body: Instala AutoDJ.apk en tu Android. Se actualiza sola encima de la versión anterior.
-          files: |
-            AutoDJ.apk
-            version.txt
-          make_latest: 'true'
+      # Cada versión es una publicación propia y completa (el APK nunca se reemplaza a medias).
+      # Enlace fijo a la más reciente: …/releases/latest/download/AutoDJ.apk
+      - name: Publicar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v0.1.${{ github.run_number }}" AutoDJ.apk version.txt \
+            --title "AutoDJ 0.1.${{ github.run_number }}" \
+            --notes "Instala AutoDJ.apk en tu Android. Se actualiza encima de la versión anterior." \
+            --latest
