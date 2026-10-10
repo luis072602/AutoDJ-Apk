@@ -216,3 +216,28 @@ input[type=checkbox] { accent-color: var(--a); }
   position: absolute; top: 4px; left: calc(50% + 8px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
   background: var(--a); color: #fff; font-size: 11px; font-weight: 600; line-height: 18px; font-style: normal; text-align: center;
 }
+
+/* ---------- Entrada (inicio de sesión) ---------- */
+.auth {
+  position: fixed; inset: 0; z-index: 50; display: flex; padding: 20px; overflow-y: auto;
+  background:
+    radial-gradient(700px 320px at 10% -10%, color-mix(in srgb, var(--a) 22%, transparent), transparent 70%),
+    radial-gradient(700px 320px at 95% -10%, color-mix(in srgb, var(--b) 16%, transparent), transparent 70%),
+    var(--bg);
+}
+.auth-box { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 12px; margin: auto; }
+.auth-box .logo { width: 56px; height: 56px; align-self: center; }
+.auth-box h1 { margin: 0; text-align: center; font-size: 30px; font-weight: 800; letter-spacing: -.02em; }
+.auth-box > p { margin: 0; text-align: center; }
+.auth-box label > span:first-child, .auth-box .field > label { display: block; color: var(--mut); font-size: 13px; margin-bottom: 4px; }
+.auth-box input:not([type=checkbox]) {
+  width: 100%; font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--bd);
+  border-radius: 12px; padding: 10px 14px; min-height: 48px;
+}
+.pass { display: flex; gap: 6px; }
+.pass button { width: 48px; padding: 0; flex: none; }
+.auth-box .lbl input { width: 20px; height: 20px; }
+.auth-msg { min-height: 20px; color: var(--b); font-size: 13.5px; }
+.auth-msg.ok { color: var(--mut); }
+.auth-box .pri { min-height: 52px; font-size: 16px; }
+.link { background: none; border: 0; color: var(--a); min-height: 40px; }

@@ -16,6 +16,7 @@ WWW = Path(__file__).resolve().parent / "app/src/main/assets/www"
 CACHE = Path(__file__).resolve().parent / "cache"
 QUIET = {"quiet": True, "no_warnings": True, "noprogress": True}
 VID = re.compile(r"^[\w-]{11}$")
+USERS = {}   # cuentas de mentira para probar la pantalla de entrada (?cuentas=prueba)
 
 
 def items_of(info):
@@ -68,6 +69,29 @@ class Handler(SimpleHTTPRequestHandler):
         except Exception as e:
             self.send_json({"error": str(e)[:140]}, 502)
 
+    # Imitación mínima de /auth/v1 de Supabase (cuentas en memoria)
+    def do_POST(self):
+        u = urlparse(self.path)
+        body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+        grant = parse_qs(u.query).get("grant_type", [""])[0]
+
+        def session(email):
+            self.send_json({"refresh_token": "r-" + email, "user": {"email": email, "user_metadata": {"name": USERS[email][1]}}})
+
+        if u.path == "/auth/v1/signup":
+            if body["email"] in USERS:
+                return self.send_json({"msg": "User already registered"}, 422)
+            USERS[body["email"]] = (body["password"], body.get("data", {}).get("name", ""))
+            return session(body["email"])
+        if u.path == "/auth/v1/token" and grant == "password":
+            if USERS.get(body["email"], ("",))[0] != body["password"]:
+                return self.send_json({"error_description": "Invalid login credentials"}, 400)
+            return session(body["email"])
+        if u.path == "/auth/v1/token" and grant == "refresh_token":
+            email = body["refresh_token"][2:]
+            return session(email) if email in USERS else self.send_json({"msg": "Invalid Refresh Token"}, 400)
+        self.send_json({"error": "No existe"}, 404)
+
     def send_json(self, obj, status=200):
         body = json.dumps(obj).encode()
         self.send_response(status)
@@ -75,6 +99,10 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store")   # que el navegador no sirva versiones viejas
+        super().end_headers()
 
     def log_message(self, *a):
         pass

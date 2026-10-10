@@ -9,6 +9,24 @@
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+<!-- ===== Entrada: sin sesión no se ve la app ===== -->
+<div class="auth" id="auth" hidden>
+  <form class="auth-box" id="authForm" novalidate>
+    <span class="logo" aria-hidden="true"></span>
+    <h1>AutoDJ</h1>
+    <p class="dm" id="authT">Inicia sesión</p>
+    <label id="authNameBox" hidden><span>Nombre</span><input id="authName" type="text" autocomplete="name" maxlength="40"></label>
+    <label><span>Correo</span><input id="authEmail" type="email" autocomplete="email" inputmode="email" required></label>
+    <div class="field"><label for="authPass">Contraseña</label>
+      <span class="pass"><input id="authPass" type="password" autocomplete="current-password" required><button type="button" id="authEye" aria-label="Mostrar u ocultar la contraseña">👁</button></span>
+    </div>
+    <label class="lbl"><input type="checkbox" id="authKeep" checked> Mantener la sesión iniciada</label>
+    <p class="auth-msg" id="authMsg" role="alert"></p>
+    <button class="pri" id="authGo">Entrar</button>
+    <button type="button" class="link" id="authSwap">¿No tienes cuenta? Regístrate</button>
+  </form>
+</div>
+
 <div class="shell">
 
 <header class="top">
@@ -122,6 +140,10 @@
       </label>
       <label class="lbl switch"><span>Igualar BPM<small>Ajusta un poco la velocidad para que los golpes coincidan</small></span><input type="checkbox" id="sync" checked></label>
       <label class="lbl switch"><span>Repetir lista<small>Al terminar la cola vuelve a empezar</small></span><input type="checkbox" id="loop" checked></label>
+    </div>
+    <div class="panel" id="account" hidden>
+      <h2>Cuenta</h2>
+      <div class="row between nowrap"><span class="clip" id="who"></span><button class="mini" id="logout">Cerrar sesión</button></div>
     </div>
   </section>
 
