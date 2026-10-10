@@ -54,6 +54,7 @@ import okhttp3.Response;
  *   /api/search?q=…      canciones que coinciden con la búsqueda
  *   /api/playlist?url=…  canciones de una lista (o una sola canción) a partir de su enlace
  *   /api/audio?v=ID      el audio de una canción, que se guarda en la caché del teléfono
+ *   /api/latest          la última versión publicada de la app, para avisar de actualizaciones
  *
  * Los datos de YouTube los saca NewPipeExtractor. Cuando YouTube cambia algo y esto deja de
  * funcionar, casi siempre basta con subir la versión de esa librería en app/build.gradle.
@@ -64,6 +65,8 @@ final class YouTube {
     private static final Pattern ID_IN_URL = Pattern.compile("(?:[?&]v=|youtu\\.be/|/shorts/)([\\w-]{11})");
     private static final long CHUNK = 1 << 20;             // se descarga por trozos de 1 MB: de un tirón YouTube lo frena
     private static final long CACHE_MAX = 400L << 20;      // 400 MB de audio guardado; al pasarse se borra lo más viejo
+    private static final String VERSION_URL =
+            "https://github.com/luis072602/AutoDJ-Apk/releases/latest/download/version.txt";
     private static final int MAX_PAGES = 5;                // páginas extra de una lista (~100 canciones cada una)
 
     private final File dir;
@@ -89,6 +92,8 @@ final class YouTube {
             switch (path) {
                 case "/api/ping":
                     return json(200, new JSONObject().put("ok", true));
+                case "/api/latest":
+                    return json(200, new JSONObject().put("latest", latestVersion()));
                 case "/api/search":
                     return json(200, search(param(u, "q")));
                 case "/api/playlist":
@@ -110,6 +115,19 @@ final class YouTube {
     private static String param(Uri u, String name) {
         String v = u.getQueryParameter(name);
         return v == null ? "" : v.trim();
+    }
+
+    // ---------- Actualizaciones ----------
+
+    /** Versión más reciente publicada, por ejemplo «0.1.9»: la escribe el flujo de GitHub junto al APK. */
+    private String latestVersion() throws IOException {
+        Request rq = new Request.Builder().url(VERSION_URL).header("Cache-Control", "no-cache").build();
+        try (Response r = http.newCall(rq).execute()) {
+            if (!r.isSuccessful() || r.body() == null) throw new IOException("GitHub respondió " + r.code());
+            String v = r.body().string().trim();
+            if (!v.matches("[0-9.]{1,20}")) throw new IOException("Versión publicada ilegible");
+            return v;
+        }
     }
 
     // ---------- Búsqueda y listas ----------

@@ -41,7 +41,9 @@ jobs:
         run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Preparar APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk AutoDJ.apk
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk AutoDJ.apk
+          echo "0.1.${{ github.run_number }}" > version.txt   # la app lo lee para saber si hay actualización
 
       - uses: actions/upload-artifact@v4
         with:
@@ -54,5 +56,7 @@ jobs:
           tag_name: ultima
           name: AutoDJ 0.1.${{ github.run_number }}
           body: Instala AutoDJ.apk en tu Android. Se actualiza sola encima de la versión anterior.
-          files: AutoDJ.apk
+          files: |
+            AutoDJ.apk
+            version.txt
           make_latest: 'true'

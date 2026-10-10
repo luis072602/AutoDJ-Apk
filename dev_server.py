@@ -52,7 +52,9 @@ class Handler(SimpleHTTPRequestHandler):
             return super().do_GET()
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         try:
-            if u.path == "/api/search":
+            if u.path == "/api/latest":
+                self.send_json({"latest": q.get("fake", "0.1.999")})
+            elif u.path == "/api/search":
                 r = listing("ytsearch20:" + q.get("q", ""))
                 self.send_json({"items": r["items"]})
             elif u.path == "/api/playlist":

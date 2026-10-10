@@ -3,29 +3,37 @@
 import { S, $, esc } from './state.js';
 import { togglePlay, skip, pos, isRunning } from './mixer.js';
 
-const RELEASE = 'https://api.github.com/repos/luis072602/AutoDJ-Apk/releases/latest';
 const APK = 'https://github.com/luis072602/AutoDJ-Apk/releases/latest/download/AutoDJ.apk';
 const build = v => +String(v).split('.').pop() || 0;   // «0.1.7» → 7: el número que sube en cada versión
 
-// Compara la versión instalada con la última publicada y, si hay una más nueva, muestra el aviso
+// Compara la versión instalada con la última publicada y, si hay una más nueva, muestra el aviso.
+// Devuelve un texto con el resultado, para el botón «Buscar actualización».
 export async function checkUpdate(current) {
+  let latest;
   try {
-    const r = await fetch(RELEASE, { cache: 'no-store' });
-    if (!r.ok) return;
-    const latest = ((await r.json()).name || '').replace(/^\D+/, '');   // «AutoDJ 0.1.8» → «0.1.8»
-    if (build(latest) <= build(current)) return;
-    const a = $('#update');
-    a.href = APK;
-    a.innerHTML = 'Hay una versión nueva (' + esc(latest) + ') · <b>Actualizar</b>';
-    a.hidden = false;
-  } catch {}   // sin conexión: se intentará la próxima vez
+    const r = await fetch('/api/latest', { cache: 'no-store' }), j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+    latest = j.latest;
+  } catch { return 'No se pudo comprobar. Revisa tu conexión.'; }
+  if (build(latest) <= build(current)) return 'Tienes la última versión.';
+  const a = $('#update');
+  a.href = APK;
+  a.innerHTML = 'Hay una versión nueva (' + esc(latest) + ') · <b>Actualizar</b>';
+  a.hidden = false;
+  return 'Hay una versión nueva: ' + latest + '. Toca el aviso de arriba para instalarla.';
 }
 
 export function initNative() {
   const app = window.AutoDJNative;
   if (!app) return;   // en un navegador no hay app detrás
 
-  checkUpdate(app.version());
+  // Versión instalada y comprobación de actualizaciones: al abrir, cada 6 horas y a mano desde Sonido
+  const version = app.version();
+  $('#ver').textContent = 'Versión ' + version;
+  $('#about').hidden = false;
+  $('#verCheck').onclick = async () => { $('#verMsg').textContent = 'Buscando…'; $('#verMsg').textContent = await checkUpdate(version); };
+  checkUpdate(version);
+  setInterval(() => checkUpdate(version), 6 * 3600 * 1000);
 
   window.autodjCommand = c => {
     if (c === 'next') skip();
