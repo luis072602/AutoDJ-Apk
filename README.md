@@ -21,6 +21,13 @@ Requiere Android 8.0 o superior.
 - **Mezclar ya** fuerza el cruce; tocar una canción de la lista mezcla hacia ella; tocar la onda salta a ese punto.
 - Sigue sonando con la pantalla apagada. La canción aparece en la barra de notificaciones y en la pantalla de bloqueo, con pausa y «mezclar ya».
 
+## Cuentas
+
+Para usar la app hay que iniciar sesión (o registrarse la primera vez) con correo y contraseña. Las cuentas viven en un
+proyecto de [Supabase](https://supabase.com), que guarda las contraseñas con hash; la app solo conserva la sesión.
+Desde el panel de Supabase (Authentication → Users) se ve quién está registrado y se puede borrar o bloquear a alguien.
+La dirección del proyecto y su clave pública están en `app/src/main/assets/www/js/config.js`.
+
 ## Cómo está hecha
 
     app/src/main/assets/www/     la interfaz (HTML, CSS y JS), la misma del AutoDJ web
