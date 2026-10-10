@@ -34,7 +34,8 @@ async function api(path, body) {
     });
   } catch { throw Object.assign(new Error('Sin conexión a internet'), { offline: true }); }
   const j = await r.json().catch(() => null);
-  if (!r.ok) throw new Error(explain(j, r.status));
+  // .down: el servicio falló (5xx) o está en pausa; no es culpa de la cuenta
+  if (!r.ok) throw Object.assign(new Error(explain(j, r.status)), { down: r.status >= 500 });
   return j || {};
 }
 
@@ -110,7 +111,7 @@ export async function initAuth() {
     save(await api('token?grant_type=refresh_token', { refresh_token: session.refresh }), session.keep);
     enter();
   } catch (err) {
-    if (err.offline) return enter();
+    if (err.offline || err.down) return enter();   // sin red o con Supabase caído no se echa a nadie
     const blocked = err.message === 'Esta cuenta fue bloqueada';
     forget(); show('login'); say(blocked ? err.message : 'Tu sesión terminó. Vuelve a entrar.');
   }
