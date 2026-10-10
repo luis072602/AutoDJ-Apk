@@ -13,6 +13,8 @@ const PRESETS = {
 function paintEq() {
   $$('#bands input').forEach((r, i) => { r.value = gains[i]; $('#db' + i).textContent = (gains[i] > 0 ? '+' : '') + gains[i]; });
   $$('#presets button').forEach(b => b.classList.toggle('on', PRESETS[b.dataset.k].every((v, i) => v === gains[i])));
+  // Nombre del ajuste activo, visible con el ecualizador plegado
+  $('#eqName').textContent = Object.keys(PRESETS).find(k => PRESETS[k].every((v, i) => v === gains[i])) || 'Personalizado';
 }
 function setBand(i, v) {
   const g = [...gains]; g[i] = v;
@@ -21,12 +23,16 @@ function setBand(i, v) {
 
 export function initEq() {
   $('#bands').innerHTML = BANDS.map((b, i) =>
-    `<label class="band" title="${b.l} Hz · doble clic para volver a 0"><span class="db" id="db${i}"></span>` +
+    `<label class="band" title="${b.l} Hz · doble toque para volver a 0"><span class="db" id="db${i}"></span>` +
     `<input type="range" min="-12" max="12" step="1" value="0" data-b="${i}" aria-label="${b.l} Hz"><span class="hz">${b.l}</span></label>`).join('');
   $('#presets').innerHTML = Object.keys(PRESETS).map(k => `<button class="chip mini" data-k="${k}">${k}</button>`).join('');
   $('#bands').oninput = e => { const i = e.target.dataset.b; if (i !== undefined) setBand(+i, +e.target.value); };
   $('#bands').ondblclick = e => { const i = e.target.dataset.b; if (i !== undefined) setBand(+i, 0); };
   $('#presets').onclick = e => { const k = e.target.dataset.k; if (k) { setGains(PRESETS[k]); paintEq(); } };
+  // El ecualizador se abre como mini ventana sobre la cabina; tocar fuera la cierra
+  const toggle = open => { $('#eqBody').hidden = !open; $('#eqToggle').setAttribute('aria-expanded', open); };
+  $('#eqToggle').onclick = () => toggle($('#eqBody').hidden);
+  document.addEventListener('pointerdown', e => { if (!$('#eqBody').hidden && !e.target.closest('#eqBox')) toggle(false); });
   paintEq();
 }
 

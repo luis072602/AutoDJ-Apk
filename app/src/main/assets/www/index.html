@@ -2,61 +2,44 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#0d0c14">
 <title>AutoDJ</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+<div class="shell">
 
 <header class="top">
-  <div class="brand">
-    <span class="logo" aria-hidden="true"></span>
-    <h1>AutoDJ</h1>
-    <span class="tag">mezcla automática por BPM</span>
-  </div>
-  <div class="top-r">
-    <label class="lbl">Volumen <input type="range" id="vol" min="0" max="1" step=".01" value=".9"></label>
-  </div>
+  <span class="logo" aria-hidden="true"></span>
+  <h1>AutoDJ</h1>
+  <span class="tag">mezcla automática por BPM</span>
 </header>
 
-<main class="app">
+<main class="views">
 
-  <aside class="side">
-    <section class="panel" aria-label="Ecualizador">
-      <h2>Ecualizador</h2>
-      <canvas id="spec" aria-hidden="true"></canvas>
-      <div class="bands" id="bands"></div>
-      <div class="row" id="presets"></div>
-      <p class="note">Actúa sobre todo lo que suena. Doble clic en una banda la devuelve a 0.</p>
-    </section>
+  <!-- ===== Cabina: ecualizador plegable, tocadiscos y controles ===== -->
+  <section class="view" data-view="cabina" aria-label="Cabina">
+    <div class="panel eq" id="eqBox">
+      <button class="eq-head" id="eqToggle" aria-expanded="false" aria-controls="eqBody">
+        <span class="eq-t">Ecualizador</span>
+        <span class="eq-n" id="eqName">Plano</span>
+        <canvas id="spec" aria-hidden="true"></canvas>
+        <span class="chev" aria-hidden="true">▾</span>
+      </button>
+      <div class="eq-body" id="eqBody" hidden>
+        <div class="bands" id="bands"></div>
+        <div class="row" id="presets"></div>
+      </div>
+    </div>
 
-    <section class="panel" aria-label="Ambiente">
-      <h2>Ambiente</h2>
-      <div class="scenes" id="scenes"></div>
-      <p class="note" id="sceneD"></p>
-      <label class="lbl stack">Duración del cruce <b id="mixV">auto</b>
-        <input type="range" id="mixT" min="2" max="30" value="14" disabled>
-      </label>
-      <label class="lbl"><input type="checkbox" id="sync" checked> Igualar BPM</label>
-      <label class="lbl"><input type="checkbox" id="loop" checked> Repetir lista</label>
-    </section>
-  </aside>
-
-  <div class="col">
-
-    <section class="panel console" aria-label="Consola">
+    <div class="panel console">
       <div class="decks">
         <div class="deck" id="dA">
           <div class="rec"></div>
           <div class="dn" id="nA">Deck A</div>
           <div class="dm" id="mA">—</div>
-        </div>
-        <div class="center">
-          <div class="status" id="status">Sin reproducir</div>
-          <div class="time" id="time">0:00 / 0:00</div>
-          <div class="xf" title="Crossfader"><span>A</span><div class="xf-track"><i id="xf"></i></div><span>B</span></div>
         </div>
         <div class="deck" id="dB">
           <div class="rec"></div>
@@ -64,52 +47,110 @@
           <div class="dm" id="mB">—</div>
         </div>
       </div>
-      <canvas id="wave" title="Clic para saltar a ese punto de la canción"></canvas>
-      <div class="row transport">
+      <div class="center">
+        <div class="status" id="status">Sin reproducir</div>
+        <div class="time" id="time">0:00 / 0:00</div>
+        <div class="xf" title="Crossfader"><span>A</span><div class="xf-track"><i id="xf"></i></div><span>B</span></div>
+      </div>
+      <canvas id="wave"></canvas>
+      <div class="transport">
         <button class="pri" id="play">▶ Reproducir</button>
         <button id="skip">Mezclar ya ⏭</button>
       </div>
-      <div class="log" id="log" role="status"></div>
-    </section>
+    </div>
+  </section>
 
-    <section class="panel" aria-label="Buscar música">
+  <!-- ===== Música: buscar y agregar ===== -->
+  <section class="view" data-view="musica" aria-label="Música" hidden>
+    <div class="panel fill">
       <div class="row between">
         <h2>Música</h2>
         <span class="credit">YouTube Music</span>
       </div>
-      <div class="row">
-        <input id="aq" type="search" placeholder="Canción, artista o enlace de una lista de YouTube" aria-label="Buscar música">
+      <div class="row nowrap">
+        <input id="aq" type="search" placeholder="Canción, artista o enlace de lista" aria-label="Buscar música">
         <button id="ago">Buscar</button>
       </div>
-      <div class="scenes" id="genres" aria-label="Búsquedas rápidas"></div>
-      <div id="resBox" hidden>
-        <div class="row between">
-          <span class="dm" id="resT"></span>
+      <div class="scenes hscroll" id="genres" aria-label="Búsquedas rápidas"></div>
+      <div class="grow" id="resBox" hidden>
+        <div class="row between nowrap">
+          <span class="dm clip" id="resT"></span>
           <button class="mini" id="addAll">Agregar todas</button>
         </div>
-        <div class="scroll short"><ul class="list" id="res"></ul></div>
+        <div class="scroll"><ul class="list" id="res"></ul></div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section class="panel" aria-label="Lista de reproducción">
+  <!-- ===== Cola: la lista de reproducción ===== -->
+  <section class="view" data-view="cola" aria-label="Cola" hidden>
+    <div class="panel fill">
       <div class="row between">
-        <h2>Lista de reproducción <span class="dm" id="cnt"></span></h2>
-        <div class="row">
-          <label class="btn" for="file" hidden>+ Archivos</label>
-          <button id="scan" title="Descarga y mide cada canción (BPM, intro y final) por adelantado">Analizar todo</button>
-          <button id="sort">Ordenar para el ambiente</button>
-          <button id="clear">Vaciar</button>
-        </div>
+        <h2>Cola <span class="dm" id="cnt"></span></h2>
+        <button class="mini" id="clear">Vaciar</button>
       </div>
+      <div class="row">
+        <button class="mini" id="sort">Ordenar para el ambiente</button>
+        <button class="mini" id="scan" title="Descarga y mide cada canción (BPM, intro y final) por adelantado">Analizar todo</button>
+      </div>
+      <label class="btn" for="file" hidden>+ Archivos</label>
       <input type="file" id="file" accept="audio/*" multiple hidden>
-      <div class="drop" id="drop" hidden>También puedes arrastrar aquí tus archivos de audio (mp3, wav, m4a…)</div>
-      <input type="search" id="q" placeholder="Buscar en la lista…" aria-label="Buscar en la lista">
-      <div class="scroll" id="sc"><ul class="list" id="list"></ul></div>
-    </section>
+      <div class="drop" id="drop" hidden></div>
+      <input type="search" id="q" placeholder="Filtrar la cola…" aria-label="Filtrar la cola">
+      <div class="scroll grow" id="sc"><ul class="list" id="list"></ul></div>
+    </div>
+  </section>
 
-  </div>
+  <!-- ===== Sonido: volumen, ambiente y ajustes de mezcla ===== -->
+  <section class="view" data-view="sonido" aria-label="Sonido" hidden>
+    <div class="panel">
+      <h2>Volumen</h2>
+      <input type="range" id="vol" min="0" max="1" step=".01" value=".9" aria-label="Volumen">
+    </div>
+    <div class="panel">
+      <h2>Ambiente</h2>
+      <div class="scenes" id="scenes"></div>
+      <p class="note" id="sceneD"></p>
+    </div>
+    <div class="panel">
+      <h2>Mezcla</h2>
+      <label class="lbl stack">Duración del cruce <b id="mixV">auto</b>
+        <input type="range" id="mixT" min="2" max="30" value="14" disabled>
+      </label>
+      <label class="lbl switch"><span>Igualar BPM<small>Ajusta un poco la velocidad para que los golpes coincidan</small></span><input type="checkbox" id="sync" checked></label>
+      <label class="lbl switch"><span>Repetir lista<small>Al terminar la cola vuelve a empezar</small></span><input type="checkbox" id="loop" checked></label>
+    </div>
+  </section>
+
 </main>
 
+<!-- Lo que suena, a la vista desde las otras secciones -->
+<div class="now" id="mini" hidden>
+  <span class="clip" id="miniT"></span>
+  <button id="miniPlay" aria-label="Reproducir o pausar">▶</button>
+</div>
+<div class="log" id="log" role="status">Ve a «Música» para buscar canciones.</div>
+
+<nav class="tabs" id="tabs" aria-label="Secciones">
+  <button data-tab="cabina" class="on">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><path d="M15 4v4M9 10v4M17 16v4"/></svg>
+    <span>Cabina</span>
+  </button>
+  <button data-tab="musica">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17V4l8 3"/><circle cx="7.5" cy="17" r="2.5"/></svg>
+    <span>Música</span>
+  </button>
+  <button data-tab="cola">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h12M4 11h12M4 16h7M18 16V8l3 1"/><circle cx="16" cy="17" r="2"/></svg>
+    <span>Cola</span><i class="badge" id="tabN" hidden></i>
+  </button>
+  <button data-tab="sonido">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4M8 7v10M12 3v18M16 7v10M20 10v4"/></svg>
+    <span>Sonido</span>
+  </button>
+</nav>
+
+</div>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

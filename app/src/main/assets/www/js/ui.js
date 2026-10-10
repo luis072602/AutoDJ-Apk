@@ -1,4 +1,4 @@
-// Interfaz: consola (decks, onda, crossfader), ambiente y lista de reproducción.
+// Interfaz: secciones del menú inferior, cabina (decks, onda, crossfader), ajustes y cola.
 import { S, SCENES, $, $$, esc, fmt, fold, clamp, bus, emit, log } from './state.js';
 import { ensure, setVolume } from './audio.js';
 import { addFiles, removeTrack, moveTrack, autoSort, scanAll, isScanning } from './library.js';
@@ -28,6 +28,7 @@ function row(t, i) {
 function renderList() {
   const raw = $('#q').value.trim(), q = fold(raw);
   const rows = S.tracks.map((t, i) => [t, i]).filter(([t]) => !q || fold(t.name).includes(q));
+  $('#tabN').textContent = S.tracks.length; $('#tabN').hidden = !S.tracks.length;
   $('#cnt').textContent = S.tracks.length ? '· ' + S.tracks.length + (q ? ' (mostrando ' + rows.length + ')' : '') : '';
   $('#list').innerHTML = rows.length ? rows.map(([t, i]) => row(t, i)).join('')
     : '<li class="empty">' + (S.tracks.length ? 'Ninguna canción coincide con «' + esc(raw) + '».' : 'Aún no hay canciones. Busca arriba y agrega las que quieras mezclar.') + '</li>';
@@ -84,8 +85,21 @@ export function paint() {
   $('#xf').style.left = x * 100 + '%';
   const now = cur ? cur.t : null;
   if (now !== shown) { shown = now; renderList(); scrollToCurrent(); }
+  // Fuera de la cabina, una barra recuerda qué suena y deja pausar
+  const away = tab !== 'cabina' && !!(cur || S.cue);
+  $('#mini').hidden = !away;
+  if (away) { setText($('#miniT'), cur ? (mix ? mix.nd : cur).t.name : 'Cargando «' + S.cue.name + '»…'); setText($('#miniPlay'), run ? '⏸' : '▶'); }
   drawSpectrum();
   drawWave();
+}
+
+// ---------- Secciones ----------
+let tab = 'cabina';
+function showTab(name) {
+  tab = name;
+  $$('.view').forEach(v => v.hidden = v.dataset.view !== name);
+  $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+  if (name === 'cola') scrollToCurrent();
 }
 
 // ---------- Eventos ----------
@@ -106,6 +120,9 @@ export function initUi() {
     pending = true;
     setTimeout(() => { pending = false; renderList(); }, 30);
   });
+
+  $('#tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab); };
+  $('#miniPlay').onclick = togglePlay;
 
   // Transporte
   $('#play').onclick = togglePlay;
