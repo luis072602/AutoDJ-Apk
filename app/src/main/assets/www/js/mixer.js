@@ -94,6 +94,19 @@ function go(pl) {
     (o.t.weak || t.weak ? ' · BPM incierto, cruce por tiempo' : ''));
 }
 
+// Sigue en automático una canción que ya venía sonando (al salir del Modo Pro), desde el mismo punto.
+// Entra con un fundido muy corto mientras quien la tenía la apaga, para que no se note el relevo.
+export function adopt(t, from, rate = 1) {
+  ensure();
+  const now = S.ctx.currentTime, d = makeDeck(t, rate, from);
+  d.at = now + .03;
+  d.g.gain.setValueAtTime(0, now); d.g.gain.linearRampToValueAtTime(1, now + .1);
+  d.src.start(d.at, from);
+  S.cur = d; S.last = t; S.cue = null;
+  release(d);   // si venía con el tempo cambiado, vuelve poco a poco al original
+  emit();
+}
+
 export function stop(msg = 'Lista terminada') {
   stopDeck(S.cur); S.cur = null;
   if (S.mix) { stopDeck(S.mix.nd); stopDeck(S.mix.o); S.mix = null; }

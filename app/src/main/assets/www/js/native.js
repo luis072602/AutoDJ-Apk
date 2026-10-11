@@ -2,6 +2,7 @@
 // y recibe los botones de pausa y siguiente que el usuario toca fuera de la app.
 import { S, $, esc } from './state.js';
 import { togglePlay, skip, pos, isRunning } from './mixer.js';
+import { proNow, proCommand } from './pro.js';
 
 const APK = 'https://github.com/luis072602/AutoDJ-Apk/releases/latest/download/AutoDJ.apk';
 const build = v => +String(v).split('.').pop() || 0;   // «0.1.7» → 7: el número que sube en cada versión
@@ -36,21 +37,30 @@ export function initNative() {
   setInterval(() => checkUpdate(version), 6 * 3600 * 1000);
 
   window.autodjCommand = c => {
+    if (S.pro) return proCommand(c);
     if (c === 'next') skip();
     else if (c === 'toggle' || (c === 'play') !== isRunning()) togglePlay();
   };
 
+  // Dos veces por segundo mira qué suena; si cambió algo, se lo cuenta a Android.
+  // En el Modo Pro se avisa desde que se entra (aunque aún no suene nada) para que la app quede
+  // activa en segundo plano y Android no la frene al minimizarla.
   let last = '';
   setInterval(() => {
-    const d = S.mix ? S.mix.nd : S.cur, playing = isRunning();
-    const key = d ? d.t.id + '|' + playing + '|' + !!S.mix : '';
+    let now = null;
+    if (S.pro) now = proNow();
+    else {
+      const d = S.mix ? S.mix.nd : S.cur;
+      if (d) now = { id: d.t.id, vid: d.t.vid || '', name: d.t.name, sub: S.mix ? 'Mezclando' : '', playing: isRunning(), dur: d.t.dur, pos: Math.max(0, pos(d)), rate: d.rate };
+    }
+    const key = now ? [now.id, now.playing, now.sub].join('|') : '';
     if (key === last) return;
     last = key;
-    if (!d) return app.stopped();
+    if (!now) return app.stopped();
     // «Artista - Título» → dos líneas
-    const i = d.t.name.indexOf(' - ');
-    const title = i > 0 ? d.t.name.slice(i + 3) : d.t.name, artist = i > 0 ? d.t.name.slice(0, i) : '';
-    app.nowPlaying(d.t.vid || '', title, S.mix ? 'Mezclando · ' + artist : artist, playing,
-      Math.round(d.t.dur * 1000), Math.round(Math.max(0, pos(d)) * 1000), d.rate);
+    const i = now.name.indexOf(' - ');
+    const title = i > 0 ? now.name.slice(i + 3) : now.name, artist = i > 0 ? now.name.slice(0, i) : '';
+    app.nowPlaying(now.vid, title, [now.sub, artist].filter(Boolean).join(' · '), now.playing,
+      Math.round(now.dur * 1000), Math.round(now.pos * 1000), now.rate);
   }, 500);
 }

@@ -6,7 +6,7 @@
 import { S, $, $$, esc, fmt, clamp, ready, log } from './state.js';
 import { ensure } from './audio.js';
 import { load } from './library.js';
-import { stop, pos, isRunning } from './mixer.js';
+import { stop, adopt, pos, isRunning } from './mixer.js';
 
 const BEATS = [1, 2, 4, 8, 16];
 const MAX_TEMPO = 8;   // ± % del fader de tempo
@@ -345,6 +345,32 @@ export function paintPro() {
   paintVu();
 }
 
+// El deck «principal»: de los que suenan, el que más se oye; si ninguno suena, el primero con canción
+const loud = d => d.n ? d.n.fader.gain.value * d.n.xf.gain.value : 0;
+function lead() {
+  const on = D.filter(d => d.playing).sort((a, b) => loud(b) - loud(a));
+  return on[0] || D.find(d => d.t) || null;
+}
+
+// Lo que se muestra en la notificación mientras el Modo Pro está abierto
+export function proNow() {
+  const d = lead();
+  if (!d) return { id: 'pro', vid: '', name: 'Modo Pro', sub: 'AutoDJ', playing: false, dur: 0, pos: 0, rate: 1 };
+  return { id: 'pro' + d.i + d.t.id, vid: d.t.vid || '', name: d.t.name, sub: 'Modo Pro · Deck ' + 'AB'[d.i], playing: d.playing, dur: d.t.dur, pos: at(d), rate: d.rate };
+}
+// Pausa y reproducir desde la notificación o los audífonos
+let resume = [];
+export function proCommand(c) {
+  const on = D.filter(d => d.playing);
+  if (c === 'next') return;
+  if (on.length && c !== 'play') { resume = on; on.forEach(pause); }
+  else if (!on.length && c !== 'pause') {
+    const again = resume.filter(d => d.t && ready(d.t));
+    (again.length ? again : [lead()].filter(d => d && ready(d.t))).forEach(d => start(d, d.off));
+    resume = [];
+  }
+}
+
 // ---------- Entrar y salir ----------
 function orient(mode) {
   const app = window.AutoDJNative;
@@ -366,12 +392,21 @@ function enter() {
 }
 
 function exit() {
+  // Lo que más se oye sigue sonando en automático desde el mismo punto; lo demás se apaga
+  const keep = D.filter(d => d.playing && ready(d.t) && S.tracks.includes(d.t)).sort((a, b) => loud(b) - loud(a))[0];
+  if (keep) {
+    const now = S.ctx.currentTime, src = keep.src, fader = keep.n.fader.gain, level = fader.value;
+    adopt(keep.t, clamp(at(keep) + .03 * keep.rate, 0, keep.t.dur - .5), keep.rate);
+    fader.setValueAtTime(level, now); fader.linearRampToValueAtTime(0, now + .1);
+    keep.src = null; keep.playing = false; keep.off = keep.cue;
+    setTimeout(() => { try { src.stop(); src.disconnect(); } catch {} fader.cancelScheduledValues(0); fader.value = level; }, 200);
+  }
   D.forEach(d => { pause(d); d.loop.on = false; });
   $$('#proFx button').forEach(b => { if (b.classList.contains('on')) { b.classList.remove('on'); toggleFx(b.dataset.fx, false); } });
   S.pro = false; S.proKeep = [];
   $('#pro').hidden = true; $('#proPick').hidden = true;
   orient('portrait');
-  log('Saliste del Modo Pro. Pulsa Reproducir para volver a la mezcla automática.');
+  log(keep ? 'Saliste del Modo Pro: «' + keep.t.name + '» sigue en mezcla automática.' : 'Saliste del Modo Pro. Pulsa Reproducir para volver a la mezcla automática.');
 }
 
 export function initPro() {
