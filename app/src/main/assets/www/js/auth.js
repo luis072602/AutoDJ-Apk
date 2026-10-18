@@ -8,7 +8,9 @@ const STORE = 'adj_session';
 // En el servidor de pruebas (dev_server.py) se puede forzar con ?cuentas=prueba para ver la pantalla sin Supabase
 const MOCK = new URLSearchParams(location.search).get('cuentas') === 'prueba';
 const URL_ = MOCK ? location.origin : config.SUPABASE_URL, KEY = MOCK ? 'mock' : config.SUPABASE_KEY;
-const CODE_LEN = 6;   // dígitos del código que llega al correo (Supabase → Authentication → Email OTP Length)
+// Dígitos del código que llega al correo: Supabase deja elegir de 6 a 10 (Authentication → Email → Email OTP Length).
+// La app acepta cualquiera de esos largos.
+const CODE_MIN = 6, CODE_MAX = 10;
 let session = null;   // { refresh, email, name, keep } guardado en el teléfono
 let access = null;    // { token, exp } solo en memoria: permiso de corta duración para leer y guardar listas
 
@@ -201,7 +203,7 @@ function cooldown(sec) {
 
 async function sendCode(again = false) {
   await api('recover', { email: R.email });
-  $('#recSent').innerHTML = 'Enviamos un código de ' + CODE_LEN + ' dígitos a <b></b>. Puede tardar un minuto; revisa también «Spam».';
+  $('#recSent').innerHTML = 'Enviamos un código a <b></b>. Puede tardar un minuto; revisa también «Spam».';
   $('#recSent').querySelector('b').textContent = R.email;
   cooldown(60);
   if (again) rsay('Te enviamos un código nuevo.', true);
@@ -218,7 +220,7 @@ function spin(state) {
 
 async function verify() {
   const code = $('#recCode').value.replace(/\D/g, '');
-  if (code.length < CODE_LEN) return rsay('Escribe los ' + CODE_LEN + ' dígitos del código');
+  if (code.length < CODE_MIN) return rsay('Escribe todos los dígitos del código');
   $('#recGo').disabled = true; $('#recCode').disabled = true;
   rsay('');
   spin('run');
@@ -280,11 +282,13 @@ function initRec() {
   $('#recResend').onclick = async () => {
     try { await sendCode(true); } catch (err) { rsay(err.message); }
   };
-  // Al completar los dígitos se verifica solo
+  // Al completar el código se verifica solo
   $('#recCode').oninput = e => {
-    const v = e.target.value.replace(/\D/g, '').slice(0, CODE_LEN);
+    const v = e.target.value.replace(/\D/g, '').slice(0, CODE_MAX);
     if (e.target.value !== v) e.target.value = v;
-    if (v.length === CODE_LEN && R.step === 'code') verify();
+    // Como el largo puede variar, se verifica al dejar de escribir un momento (o al llegar al máximo)
+    clearTimeout(R.typing);
+    if (v.length >= CODE_MIN && R.step === 'code') R.typing = setTimeout(verify, v.length === CODE_MAX ? 0 : 900);
   };
   $('#recPass').oninput = passTyped;
   $('#recPass2').oninput = passTyped;
