@@ -257,6 +257,7 @@ async function recSubmit(e) {
     try {
       if (await exists(email) === false) { btn.disabled = false; return rsay('No hay ninguna cuenta con ese correo'); }
       R.email = email;
+      rsay('Enviando el código a tu correo… (puede tardar unos segundos)', true);
       await sendCode();
       recStep('code');
     } catch (err) { rsay(err.message); }
