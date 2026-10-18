@@ -8,12 +8,14 @@ import { initNative } from './native.js';
 import { initAuth } from './auth.js';
 import { initSettings } from './settings.js';
 import { initPro, paintPro } from './pro.js';
+import { initLists } from './lists.js';
 
 window.autodj = S; // para inspeccionar el estado desde la consola del navegador
 initEq();
 initYouTube();
 initUi();
 initNative();
+initLists();
 initAuth();
 initSettings();
 initPro();

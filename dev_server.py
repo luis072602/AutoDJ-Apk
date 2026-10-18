@@ -17,6 +17,8 @@ CACHE = Path(__file__).resolve().parent / "cache"
 QUIET = {"quiet": True, "no_warnings": True, "noprogress": True}
 VID = re.compile(r"^[\w-]{11}$")
 USERS = {}   # cuentas de mentira para probar la pantalla de entrada (?cuentas=prueba)
+CODES = {}   # códigos de «olvidé mi contraseña» (siempre 123456)
+LISTS = {}   # listas guardadas: correo → {nombre: fila}
 
 
 def items_of(info):
@@ -48,6 +50,8 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         u = urlparse(self.path)
+        if u.path == "/rest/v1/playlists":
+            return self.send_json(list(LISTS.get(self.who(), {}).values()))
         if not u.path.startswith("/api/"):
             return super().do_GET()
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
@@ -78,7 +82,8 @@ class Handler(SimpleHTTPRequestHandler):
         grant = parse_qs(u.query).get("grant_type", [""])[0]
 
         def session(email):
-            self.send_json({"refresh_token": "r-" + email, "user": {"email": email, "user_metadata": {"name": USERS[email][1]}}})
+            self.send_json({"refresh_token": "r-" + email, "access_token": "a-" + email, "expires_in": 3600,
+                            "user": {"email": email, "user_metadata": {"name": USERS[email][1]}}})
 
         if u.path == "/auth/v1/signup":
             if body["email"] in USERS:
@@ -92,10 +97,44 @@ class Handler(SimpleHTTPRequestHandler):
         if u.path == "/auth/v1/token" and grant == "refresh_token":
             email = body["refresh_token"][2:]
             return session(email) if email in USERS else self.send_json({"msg": "Invalid Refresh Token"}, 400)
+        if u.path == "/rest/v1/rpc/email_exists":
+            return self.send_json(body["p_email"].strip().lower() in USERS)
+        if u.path == "/auth/v1/recover":
+            CODES[body["email"]] = "123456"
+            print("Codigo para", body["email"], ": 123456", flush=True)
+            return self.send_json({})
+        if u.path == "/auth/v1/verify":
+            if CODES.get(body["email"]) != body["token"]:
+                return self.send_json({"msg": "Token has expired or is invalid"}, 403)
+            del CODES[body["email"]]
+            return session(body["email"])
+        if u.path == "/rest/v1/playlists":
+            LISTS.setdefault(self.who(), {})[body["name"]] = body
+            return self.send_json(None, 201)
         self.send_json({"error": "No existe"}, 404)
 
+    def do_PUT(self):
+        body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+        email = self.who()
+        if urlparse(self.path).path == "/auth/v1/user" and email in USERS:
+            if USERS[email][0] == body["password"]:
+                return self.send_json({"msg": "New password should be different from the old password."}, 422)
+            USERS[email] = (body["password"], USERS[email][1])
+            return self.send_json({"email": email})
+        self.send_json({"msg": "No existe"}, 401)
+
+    def do_DELETE(self):
+        u = urlparse(self.path)
+        name = parse_qs(u.query).get("name", [""])[0].removeprefix("eq.")
+        LISTS.get(self.who(), {}).pop(name, None)
+        self.send_json(None, 204)
+
+    # Correo de la cuenta según el permiso «a-correo» que manda la app
+    def who(self):
+        return (self.headers.get("Authorization") or "").removeprefix("Bearer a-")
+
     def send_json(self, obj, status=200):
-        body = json.dumps(obj).encode()
+        body = b"" if status == 204 else json.dumps(obj).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))

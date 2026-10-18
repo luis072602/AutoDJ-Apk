@@ -67,7 +67,7 @@ h2 .dm { text-transform: none; letter-spacing: 0; }
 .credit { color: var(--mut); font-size: 12.5px; }
 
 /* ---------- Controles ---------- */
-button, .btn, input[type=search] {
+button, .btn, input[type=search], input.in {
   font: inherit; color: var(--fg); background: var(--panel-2);
   border: 1px solid var(--bd); border-radius: 12px; padding: 8px 14px; min-height: 44px;
 }
@@ -75,9 +75,10 @@ button, .btn { cursor: pointer; transition: border-color .15s, background .15s, 
 button:active, .btn:active { transform: scale(.97); }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--a); outline-offset: 2px; }
 .pri { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; }
+.pri:disabled { opacity: .4; cursor: default; }
 .chip.on { background: var(--a); border-color: var(--a); color: #fff; }
 .mini { padding: 6px 12px; min-height: 36px; font-size: 13.5px; white-space: nowrap; }
-input[type=search] { flex: 1; min-width: 0; width: 100%; background: var(--bg); }
+input[type=search], input.in { flex: 1; min-width: 0; width: 100%; background: var(--bg); }
 input[type=range] { accent-color: var(--a); width: 100%; height: 28px; }
 input[type=checkbox] { accent-color: var(--a); }
 .lbl { display: flex; align-items: center; gap: 8px; color: var(--mut); font-size: 14px; }
@@ -241,8 +242,75 @@ input[type=checkbox] { accent-color: var(--a); }
 .auth-msg.ok { color: var(--mut); }
 .auth-box .pri { min-height: 52px; font-size: 16px; }
 .link { background: none; border: 0; color: var(--a); min-height: 40px; }
+.link:disabled { color: var(--mut); }
+#authForgot { margin-top: -8px; color: var(--mut); font-size: 14px; }
+
+/* Reglas de la contraseña: ○ pendiente · ✓ cumplida */
+.rules { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 3px; font-size: 13px; color: var(--mut); }
+.rules li { display: flex; align-items: center; gap: 8px; transition: color .2s; }
+.rules li::before {
+  content: ""; width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid currentColor; flex: none;
+  display: grid; place-items: center; font-size: 10px; line-height: 1; transition: background .2s, border-color .2s;
+}
+.rules li.ok { color: #34d399; }
+.rules li.ok::before { content: "✓"; color: var(--bg); background: #34d399; border-color: #34d399; font-weight: 800; }
+.rules.typed li:not(.ok) { color: var(--fg); }
+.rec-step { display: flex; flex-direction: column; gap: 12px; }
+.rec-step .note { margin: 0; text-align: center; }
+
+/* Código de verificación y el círculo giratorio que lo comprueba */
+.code-box { position: relative; }
+.auth-box input.code {
+  text-align: center; font-size: 30px; font-weight: 800; letter-spacing: .35em; padding-left: calc(14px + .35em);
+  font-variant-numeric: tabular-nums; min-height: 64px; transition: opacity .2s;
+}
+.auth-box input.code.dim { opacity: 0; }
+.verify {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 12px;
+  border-radius: 12px; background: var(--panel); border: 1px solid var(--bd); font-weight: 600; animation: fadeIn .2s;
+}
+.ring { --ring: var(--a); position: relative; width: 44px; height: 44px; flex: none; display: grid; place-items: center; }
+.ring::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 15%, var(--b) 45%, var(--ring) 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+  animation: spin .8s linear infinite;
+}
+.ring svg { width: 20px; height: 20px; fill: none; stroke: var(--fg); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ring .tick, .ring .cross, .verify.ok .lock, .verify.bad .lock { display: none; }
+.verify.ok .ring { --ring: #34d399; }
+.verify.ok .ring::before { animation: none; background: #34d399; }
+.verify.ok .tick { display: block; stroke: #34d399; stroke-width: 2.6; stroke-dasharray: 22; stroke-dashoffset: 22; animation: draw .35s .05s forwards; }
+.verify.ok { color: #34d399; }
+.verify.bad .ring::before { animation: none; background: var(--b); }
+.verify.bad .cross { display: block; stroke: var(--b); stroke-width: 2.6; }
+.verify.bad { color: var(--b); animation: shake .35s; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes fadeIn { from { opacity: 0; } }
+@keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+@media (prefers-reduced-motion: reduce) { .ring::before { animation-duration: 2.4s; } .verify.bad { animation: none; } }
 
 /* ---------- Ajustes ---------- */
+/* Entrada a una subsección (Sonido) y botón para volver */
+.entry {
+  flex: none; display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px 14px;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel)); border-radius: var(--radius); min-height: 64px;
+}
+.entry svg { width: 26px; height: 26px; flex: none; fill: none; stroke: var(--a); stroke-width: 1.8; stroke-linecap: round; }
+.entry span { flex: 1; }
+.entry b { display: block; }
+.entry small { color: var(--mut); font-size: 12.5px; }
+.entry svg.go { width: 20px; height: 20px; stroke: var(--mut); }
+.back { flex: none; align-self: flex-start; background: none; border: 0; color: var(--a); padding: 4px 4px; min-height: 36px; font-weight: 600; }
+
+/* ---------- Listas guardadas ---------- */
+#lsList li { grid-template-columns: minmax(0, 1fr) auto; }
+#lsList li .t { cursor: pointer; }
+#lsList .ops button.ls-load { background: var(--a); border-color: var(--a); color: #fff; }
+#lsList .ops button.sure { width: auto; padding: 0 10px; border-color: var(--b); color: var(--b); font-size: 13px; }
+.ls-help { margin-top: 6px !important; }
+
 .themes { display: flex; gap: 12px; }
 .themes button { width: 44px; min-height: 44px; padding: 0; border-radius: 50%; background: var(--sw); border: 3px solid transparent; }
 .themes button.on { border-color: var(--fg); box-shadow: 0 0 0 2px var(--bg) inset; }

@@ -98,7 +98,8 @@ let tab = 'cabina';
 function showTab(name) {
   tab = name;
   $$('.view').forEach(v => v.hidden = v.dataset.view !== name);
-  $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+  const lit = name === 'sonido' ? 'ajustes' : name;   // Sonido vive dentro de Ajustes
+  $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === lit));
   if (name === 'cola') scrollToCurrent();
 }
 
@@ -134,6 +135,8 @@ export function initUi() {
   // «Pro» no es una sección más: abre la consola a pantalla completa (lo maneja pro.js)
   $('#tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b && b.dataset.tab !== 'pro') showTab(b.dataset.tab); };
   bus.addEventListener('theme', () => colors = null);
+  $('#toSonido').onclick = () => showTab('sonido');
+  $('#sonBack').onclick = () => showTab('ajustes');
   $('#miniPlay').onclick = togglePlay;
 
   // Transporte

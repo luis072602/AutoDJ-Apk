@@ -18,12 +18,52 @@
     <label id="authNameBox" hidden><span>Nombre</span><input id="authName" type="text" autocomplete="name" maxlength="40"></label>
     <label><span>Correo</span><input id="authEmail" type="email" autocomplete="email" inputmode="email" required></label>
     <div class="field"><label for="authPass">Contraseña</label>
-      <span class="pass"><input id="authPass" type="password" autocomplete="current-password" required><button type="button" id="authEye" aria-label="Mostrar u ocultar la contraseña">👁</button></span>
+      <span class="pass"><input id="authPass" type="password" autocomplete="current-password" required><button type="button" class="eye" aria-label="Mostrar u ocultar la contraseña">👁</button></span>
+      <ul class="rules" id="authRules" hidden></ul>
     </div>
     <label class="lbl"><input type="checkbox" id="authKeep" checked> Mantener la sesión iniciada</label>
     <p class="auth-msg" id="authMsg" role="alert"></p>
     <button class="pri" id="authGo">Entrar</button>
     <button type="button" class="link" id="authSwap">¿No tienes cuenta? Regístrate</button>
+    <button type="button" class="link" id="authForgot">Olvidé mi contraseña</button>
+  </form>
+
+  <!-- Recuperar la contraseña: correo → código → contraseña nueva -->
+  <form class="auth-box" id="rec" novalidate hidden>
+    <span class="logo" aria-hidden="true"></span>
+    <h1>AutoDJ</h1>
+    <p class="dm" id="recT">Recupera tu contraseña</p>
+    <div class="rec-step" data-s="email">
+      <label><span>Correo de tu cuenta</span><input id="recEmail" type="email" autocomplete="email" inputmode="email"></label>
+      <p class="note">Te enviaremos un código para crear una contraseña nueva.</p>
+    </div>
+    <div class="rec-step" data-s="code" hidden>
+      <p class="note" id="recSent"></p>
+      <div class="code-box">
+        <input id="recCode" class="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="000000" aria-label="Código de verificación">
+        <div class="verify" id="recSpin" hidden aria-live="polite">
+          <span class="ring" aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="lock"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+            <svg viewBox="0 0 24 24" class="tick"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+            <svg viewBox="0 0 24 24" class="cross"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </span>
+          <span id="recSpinT"></span>
+        </div>
+      </div>
+      <button type="button" class="link" id="recResend">Reenviar código</button>
+    </div>
+    <div class="rec-step" data-s="pass" hidden>
+      <div class="field"><label for="recPass">Nueva contraseña</label>
+        <span class="pass"><input id="recPass" type="password" autocomplete="new-password"><button type="button" class="eye" aria-label="Mostrar u ocultar la contraseña">👁</button></span>
+      </div>
+      <div class="field"><label for="recPass2">Repite la contraseña</label>
+        <span class="pass"><input id="recPass2" type="password" autocomplete="new-password"><button type="button" class="eye" aria-label="Mostrar u ocultar la contraseña">👁</button></span>
+      </div>
+      <ul class="rules" id="recRules"></ul>
+    </div>
+    <p class="auth-msg" id="recMsg" role="alert"></p>
+    <button class="pri" id="recGo">Enviar código</button>
+    <button type="button" class="link" id="recBack">Volver a iniciar sesión</button>
   </form>
 </div>
 
@@ -122,8 +162,26 @@
     </div>
   </section>
 
-  <!-- ===== Sonido: volumen, ambiente y ajustes de mezcla ===== -->
+  <!-- ===== Listas: colas guardadas en la cuenta ===== -->
+  <section class="view" data-view="listas" aria-label="Listas" hidden>
+    <div class="panel">
+      <h2>Guardar la cola como lista</h2>
+      <div class="row nowrap">
+        <input id="lsName" class="in" type="text" maxlength="40" placeholder="Nombre: Fiesta, Gym…" aria-label="Nombre de la lista" enterkeyhint="done">
+        <button class="pri" id="lsSave">Guardar</button>
+      </div>
+      <p class="note" id="lsSync"></p>
+    </div>
+    <div class="panel fill">
+      <h2>Mis listas <span class="dm" id="lsCnt"></span></h2>
+      <p class="note ls-help">▶ carga la lista en la cola · ＋ la agrega al final</p>
+      <div class="scroll grow"><ul class="list" id="lsList"></ul></div>
+    </div>
+  </section>
+
+  <!-- ===== Sonido (dentro de Ajustes): volumen, ambiente y ajustes de mezcla ===== -->
   <section class="view" data-view="sonido" aria-label="Sonido" hidden>
+    <button class="back" id="sonBack">‹ Ajustes</button>
     <div class="panel">
       <h2>Volumen</h2>
       <input type="range" id="vol" min="0" max="1" step=".01" value=".9" aria-label="Volumen">
@@ -145,6 +203,11 @@
 
   <!-- ===== Ajustes: apariencia, cuenta, versión, manual y créditos ===== -->
   <section class="view" data-view="ajustes" aria-label="Ajustes" hidden>
+    <button class="entry" id="toSonido">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4M8 7v10M12 3v18M16 7v10M20 10v4"/></svg>
+      <span><b>Sonido</b><small>Volumen, ambiente y mezcla</small></span>
+      <svg class="go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
     <div class="panel">
       <div class="row between"><h2>Color</h2><span class="dm" id="themeN"></span></div>
       <div class="themes" id="themes"></div>
@@ -192,13 +255,13 @@
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h12M4 11h12M4 16h7M18 16V8l3 1"/><circle cx="16" cy="17" r="2"/></svg>
     <span>Cola</span><i class="badge" id="tabN" hidden></i>
   </button>
+  <button data-tab="listas">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a1 1 0 0 1 1 1v17l-6-4-6 4V4a1 1 0 0 1 1-1z"/><path d="M10 8h4"/></svg>
+    <span>Listas</span>
+  </button>
   <button data-tab="pro">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="12" r="4"/><circle cx="17" cy="12" r="4"/><path d="M7 12h.01M17 12h.01M11 19h2"/></svg>
     <span>Pro</span>
-  </button>
-  <button data-tab="sonido">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4M8 7v10M12 3v18M16 7v10M20 10v4"/></svg>
-    <span>Sonido</span>
   </button>
   <button data-tab="ajustes">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>

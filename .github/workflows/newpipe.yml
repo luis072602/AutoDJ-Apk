@@ -1,0 +1,59 @@
+name: Revisar NewPipe Extractor
+
+# Cada lunes mira si salió una versión nueva de NewPipe Extractor (la pieza que lee YouTube).
+# Si la hay: la pone en la app, comprueba que compile y, solo entonces, la guarda y lanza
+# «Compilar APK», que publica la actualización. Si no compila, no toca nada (se avisa por correo).
+on:
+  schedule:
+    - cron: '0 12 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  revisar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Buscar versión nueva
+        id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NEW=$(gh api repos/TeamNewPipe/NewPipeExtractor/releases/latest --jq .tag_name)
+          OLD=$(grep -oP "NewPipeExtractor:\K[^']+" app/build.gradle)
+          echo "Usada: $OLD · Última: $NEW"
+          if [ -n "$NEW" ] && [ "$NEW" != "$OLD" ]; then
+            sed -i "s/NewPipeExtractor:$OLD'/NewPipeExtractor:$NEW'/" app/build.gradle
+            echo "new=$NEW" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-java@v4
+        if: steps.v.outputs.new
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.v.outputs.new
+        with:
+          gradle-version: '8.9'
+
+      - name: Comprobar que compila
+        if: steps.v.outputs.new
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Guardar y publicar
+        if: steps.v.outputs.new
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "NewPipe Extractor ${{ steps.v.outputs.new }}"
+          git push
+          # Un push hecho por este flujo no dispara otros flujos; por eso se lanza a mano
+          gh workflow run build.yml --ref main

@@ -5,3 +5,4 @@ local.properties
 *.apk
 __pycache__/
 cache/
+.claude/
