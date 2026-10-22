@@ -10,8 +10,6 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-import yt_dlp
-
 WWW = Path(__file__).resolve().parent / "app/src/main/assets/www"
 CACHE = Path(__file__).resolve().parent / "cache"
 QUIET = {"quiet": True, "no_warnings": True, "noprogress": True}
@@ -30,12 +28,14 @@ def items_of(info):
 
 
 def listing(target):
+    import yt_dlp   # se carga solo si se busca música: las pruebas automáticas no lo necesitan
     with yt_dlp.YoutubeDL({**QUIET, "extract_flat": "in_playlist", "skip_download": True}) as y:
         info = y.extract_info(target, download=False)
     return {"title": info.get("title") or "", "items": items_of(info)}
 
 
 def audio(vid):
+    import yt_dlp
     hit = next(iter(CACHE.glob(vid + ".*")), None)
     if hit and hit.suffix != ".part":
         return hit

@@ -1,0 +1,61 @@
+name: Pruebas
+
+# Lo que tiene que seguir funcionando antes de publicar cualquier versión.
+# Lo usan «Compilar APK» (en cada cambio) y se puede correr a mano desde la pestaña Actions.
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  interfaz:
+    name: Interfaz y motor de mezcla
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Preparar navegador de pruebas
+        run: |
+          pip install -r pruebas/requisitos.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Probar
+        run: python -m pytest pruebas -v
+
+  youtube:
+    name: YouTube (búsqueda y descarga reales)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Probar YouTube
+        run: gradle testReleaseUnitTest --no-daemon
+
+      - name: Resultado
+        if: always()
+        run: |
+          R=$(cat youtube-check.txt 2>/dev/null || echo "sin resultado (la prueba no llegó a correr)")
+          echo "YouTube: $R"
+          case "$R" in
+            ok) echo "### ✅ YouTube funciona: búsqueda y descarga de audio correctas" >> "$GITHUB_STEP_SUMMARY" ;;
+            bloqueado*) echo "::warning::YouTube pidió verificación al servidor de GitHub; no se pudo comprobar. $R"
+                        echo "### ⚠️ YouTube no dejó comprobar desde GitHub (no indica que la app falle)" >> "$GITHUB_STEP_SUMMARY" ;;
+            *) echo "### ❌ YouTube: $R" >> "$GITHUB_STEP_SUMMARY" ;;
+          esac

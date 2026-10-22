@@ -60,6 +60,18 @@ android {
         abortOnError false
         checkReleaseBuilds false
     }
+
+    // Prueba de YouTube en el PC/GitHub (sin teléfono): ver app/src/test/…/YouTubeLiveTest.java
+    testOptions {
+        unitTests {
+            returnDefaultValues = true
+            all {
+                systemProperty 'autodj.youtube.result', rootProject.file('youtube-check.txt').absolutePath
+                outputs.upToDateWhen { false }   // siempre se vuelve a probar: YouTube cambia aunque el código no
+                testLogging { events 'passed', 'skipped', 'failed'; exceptionFormat 'full'; showStandardStreams true }
+            }
+        }
+    }
 }
 
 dependencies {
@@ -70,4 +82,7 @@ dependencies {
     // https://github.com/TeamNewPipe/NewPipeExtractor/releases
     implementation 'com.github.teamnewpipe:NewPipeExtractor:v0.26.5'
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs_nio:2.0.4'
+
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'   // en las pruebas fuera del teléfono org.json no viene incluido
 }

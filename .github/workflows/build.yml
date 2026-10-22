@@ -9,7 +9,12 @@ permissions:
   contents: write
 
 jobs:
+  # Si alguna prueba falla, no se compila ni se publica nada: los teléfonos se quedan con la versión anterior
+  pruebas:
+    uses: ./.github/workflows/pruebas.yml
+
   apk:
+    needs: pruebas
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

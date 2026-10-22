@@ -52,3 +52,17 @@ YouTube cambia cosas cada cierto tiempo. Casi siempre se arregla subiendo la ver
 
 `app/autodj.keystore` (creada por el flujo de GitHub la primera vez) firma todas las versiones para que se actualicen
 entre sí. Está en el repositorio con su clave a la vista: sirve para una app personal, no para una publicada.
+
+## Pruebas automáticas
+
+Antes de publicar cualquier versión, GitHub corre las pruebas; si alguna falla, **no se publica nada** y los teléfonos se quedan con la versión anterior.
+
+- **Interfaz y motor de mezcla** (`pruebas/`): entrar, registrarse, «Olvidé mi contraseña», pestañas, Modo Pro, listas, cola en la cuenta, medición de BPM y mezcla automática (incluido el límite de 5 % de velocidad que protege la voz). Usan cuentas y canciones de prueba.
+- **YouTube** (`app/src/test/…/YouTubeLiveTest.java`): busca y descarga una canción real, como lo hace la app. Si YouTube no deja comprobar desde los servidores de GitHub, se marca como «no comprobado» sin bloquear.
+- **Cada lunes** (`.github/workflows/newpipe.yml`): si hay una versión nueva de NewPipe Extractor, se prueba contra YouTube y solo se publica si funciona.
+
+Para correr las pruebas de interfaz en el PC (una sola vez: `py -m pip install -r pruebas/requisitos.txt` y `py -m playwright install chromium`):
+
+```
+py -m pytest pruebas
+```

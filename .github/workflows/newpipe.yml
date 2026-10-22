@@ -1,8 +1,11 @@
 name: Revisar NewPipe Extractor
 
 # Cada lunes mira si salió una versión nueva de NewPipe Extractor (la pieza que lee YouTube).
-# Si la hay: la pone en la app, comprueba que compile y, solo entonces, la guarda y lanza
-# «Compilar APK», que publica la actualización. Si no compila, no toca nada (se avisa por correo).
+# Si la hay, la prueba contra YouTube de verdad (buscar y descargar audio) y solo la publica si funciona.
+#
+#   versión nueva funciona          → se guarda y «Compilar APK» la publica (corriendo todas las pruebas otra vez)
+#   versión nueva falla             → no se publica nada; el flujo queda en rojo y GitHub avisa por correo
+#   YouTube no dejó comprobar       → no se publica; se reintenta la semana siguiente (o a mano: «Run workflow»)
 on:
   schedule:
     - cron: '0 12 * * 1'
@@ -15,6 +18,7 @@ permissions:
 jobs:
   revisar:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -26,10 +30,9 @@ jobs:
           NEW=$(gh api repos/TeamNewPipe/NewPipeExtractor/releases/latest --jq .tag_name)
           OLD=$(grep -oP "NewPipeExtractor:\K[^']+" app/build.gradle)
           echo "Usada: $OLD · Última: $NEW"
-          if [ -n "$NEW" ] && [ "$NEW" != "$OLD" ]; then
-            sed -i "s/NewPipeExtractor:$OLD'/NewPipeExtractor:$NEW'/" app/build.gradle
-            echo "new=$NEW" >> "$GITHUB_OUTPUT"
-          fi
+          echo "old=$OLD" >> "$GITHUB_OUTPUT"
+          if [ -n "$NEW" ] && [ "$NEW" != "$OLD" ]; then echo "new=$NEW" >> "$GITHUB_OUTPUT"; fi
+          if [ -z "$NEW" ] || [ "$NEW" = "$OLD" ]; then echo "### Sin novedades: ya se usa $OLD" >> "$GITHUB_STEP_SUMMARY"; fi
 
       - uses: actions/setup-java@v4
         if: steps.v.outputs.new
@@ -42,18 +45,56 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Comprobar que compila
+      # Referencia: cómo le va a la versión que tienen hoy los teléfonos
+      - name: Probar YouTube con la versión actual
+        id: old
         if: steps.v.outputs.new
-        run: gradle assembleRelease --no-daemon --stacktrace
+        run: |
+          gradle testReleaseUnitTest --no-daemon || true
+          echo "r=$(cat youtube-check.txt 2>/dev/null || echo 'sin resultado')" >> "$GITHUB_OUTPUT"
 
-      - name: Guardar y publicar
+      - name: Probar YouTube con la versión nueva
+        id: new
+        if: steps.v.outputs.new
+        run: |
+          rm -f youtube-check.txt
+          sed -i "s/NewPipeExtractor:${{ steps.v.outputs.old }}'/NewPipeExtractor:${{ steps.v.outputs.new }}'/" app/build.gradle
+          gradle testReleaseUnitTest assembleRelease --no-daemon || true
+          if [ ! -f app/build/outputs/apk/release/app-release.apk ]; then echo "roto: la app no compila con esta versión" > youtube-check.txt; fi
+          echo "r=$(cat youtube-check.txt 2>/dev/null || echo 'roto: la prueba no llegó a correr')" >> "$GITHUB_OUTPUT"
+
+      - name: Decidir
         if: steps.v.outputs.new
         env:
           GH_TOKEN: ${{ github.token }}
+          OLD_R: ${{ steps.old.outputs.r }}
+          NEW_R: ${{ steps.new.outputs.r }}
+          OLD_V: ${{ steps.v.outputs.old }}
+          NEW_V: ${{ steps.v.outputs.new }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "NewPipe Extractor ${{ steps.v.outputs.new }}"
-          git push
-          # Un push hecho por este flujo no dispara otros flujos; por eso se lanza a mano
-          gh workflow run build.yml --ref main
+          {
+            echo "### NewPipe Extractor $OLD_V → $NEW_V"
+            echo "- Versión actual ($OLD_V): $OLD_R"
+            echo "- Versión nueva ($NEW_V): $NEW_R"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$NEW_R" = "ok" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am "NewPipe Extractor $NEW_V (probada contra YouTube)"
+            git push
+            # Un push hecho por este flujo no dispara otros flujos; por eso se lanza a mano
+            gh workflow run build.yml --ref main
+            echo "✅ Funciona: se publica la actualización." >> "$GITHUB_STEP_SUMMARY"
+          elif [[ "$NEW_R" == bloqueado* ]]; then
+            echo "⚠️ YouTube no dejó comprobar desde GitHub. No se publicó nada; se reintenta la próxima semana." >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::YouTube no dejó comprobar la versión nueva; no se publicó"
+            exit 1
+          else
+            if [ "$OLD_R" = "ok" ]; then
+              echo "❌ La versión nueva rompe YouTube y la actual funciona: no se publicó. Los teléfonos siguen bien." >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "❌ Ni la versión actual ni la nueva funcionan con YouTube: la app probablemente no puede buscar ni reproducir." >> "$GITHUB_STEP_SUMMARY"
+            fi
+            echo "::error::La versión nueva de NewPipe no pasó la prueba de YouTube; no se publicó"
+            exit 1
+          fi

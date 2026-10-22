@@ -132,7 +132,8 @@ final class YouTube {
 
     // ---------- Búsqueda y listas ----------
 
-    private JSONObject search(String query) throws Exception {
+    // (sin «private»: las usa también la prueba automática YouTubeLiveTest)
+    JSONObject search(String query) throws Exception {
         if (query.isEmpty()) throw new IllegalArgumentException("Escribe qué quieres buscar");
         StreamingService yt = ServiceList.YouTube;
         JSONArray items = new JSONArray();
@@ -154,7 +155,7 @@ final class YouTube {
         return new JSONObject().put("items", items);
     }
 
-    private JSONObject playlist(String url) throws Exception {
+    JSONObject playlist(String url) throws Exception {
         StreamingService yt = ServiceList.YouTube;
         JSONArray items = new JSONArray();
         String title;
@@ -198,7 +199,7 @@ final class YouTube {
     // ---------- Audio ----------
 
     /** Devuelve el archivo de audio de un video, descargándolo si no está en la caché. */
-    private File audio(String id) throws Exception {
+    File audio(String id) throws Exception {
         Object lock = locks.computeIfAbsent(id, k -> new Object());
         synchronized (lock) {
             for (String ext : new String[]{"m4a", "webm"}) {
