@@ -15,9 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -34,14 +34,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
         with:
           gradle-version: '8.9'
 
@@ -54,8 +54,11 @@ jobs:
           R=$(cat youtube-check.txt 2>/dev/null || echo "sin resultado (la prueba no llegó a correr)")
           echo "YouTube: $R"
           case "$R" in
-            ok) echo "### ✅ YouTube funciona: búsqueda y descarga de audio correctas" >> "$GITHUB_STEP_SUMMARY" ;;
+            ok) echo "::notice::YouTube funciona: búsqueda y descarga de audio correctas"
+                echo "### ✅ YouTube funciona: búsqueda y descarga de audio correctas" >> "$GITHUB_STEP_SUMMARY" ;;
             bloqueado*) echo "::warning::YouTube pidió verificación al servidor de GitHub; no se pudo comprobar. $R"
                         echo "### ⚠️ YouTube no dejó comprobar desde GitHub (no indica que la app falle)" >> "$GITHUB_STEP_SUMMARY" ;;
-            *) echo "### ❌ YouTube: $R" >> "$GITHUB_STEP_SUMMARY" ;;
+            *) echo "::error::YouTube: $R"
+               echo "### ❌ YouTube: $R" >> "$GITHUB_STEP_SUMMARY"
+               exit 1 ;;
           esac

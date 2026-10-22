@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Buscar versión nueva
         id: v
@@ -34,13 +34,13 @@ jobs:
           if [ -n "$NEW" ] && [ "$NEW" != "$OLD" ]; then echo "new=$NEW" >> "$GITHUB_OUTPUT"; fi
           if [ -z "$NEW" ] || [ "$NEW" = "$OLD" ]; then echo "### Sin novedades: ya se usa $OLD" >> "$GITHUB_STEP_SUMMARY"; fi
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         if: steps.v.outputs.new
         with:
           distribution: temurin
           java-version: 17
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
         if: steps.v.outputs.new
         with:
           gradle-version: '8.9'
