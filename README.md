@@ -26,8 +26,8 @@ Requiere Android 8.0 o superior.
 ## Cuentas
 
 Para usar la app hay que iniciar sesión (o registrarse la primera vez) con correo y contraseña. Las cuentas viven en un
-proyecto de [Supabase](https://supabase.com), que guarda las contraseñas con hash; la app solo conserva la sesión.
-Desde el panel de Supabase (Authentication → Users) se ve quién está registrado y se puede borrar o bloquear a alguien.
+proyecto de [Neon](https://neon.com), que guarda las contraseñas con hash; la app solo conserva la sesión.
+Desde el panel de Neon (Mejor autenticación) se ve quién está registrado y se puede borrar o bloquear a alguien.
 La dirección del proyecto y su clave pública están en `app/src/main/assets/www/js/config.js`.
 
 ## Cómo está hecha

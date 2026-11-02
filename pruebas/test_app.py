@@ -1,6 +1,6 @@
 """Pruebas de regresión de AutoDJ: lo que tiene que seguir funcionando después de cualquier cambio.
 
-Corren en un navegador sin ventana contra dev_server.py con cuentas de prueba (no tocan Supabase ni YouTube).
+Corren en un navegador sin ventana contra dev_server.py con cuentas de prueba (no tocan Neon ni YouTube).
 En el PC:   py -m pytest pruebas
 """
 import uuid
@@ -147,6 +147,29 @@ def test_olvide_mi_contrasena(phone):
     expect(page.locator("#authMsg")).to_have_text("Correo o contraseña incorrectos")
     login(page, email, "Nueva#2026")
     expect(page.locator("#auth")).to_be_hidden()
+
+
+def test_cuenta_anterior_a_neon_conserva_sus_listas(phone):
+    page = phone.open()
+    email = f"p{uuid.uuid4().hex[:8]}@prueba.local"
+    page.evaluate("""email => {
+      localStorage.removeItem('adj_neon');                            // como un teléfono que recién actualiza
+      localStorage.setItem('adj_session', JSON.stringify({ refresh: 'viejo', email, name: 'Prueba', keep: true }));
+      localStorage.setItem('adj_lists:' + email, JSON.stringify({ gone: [], lists: {
+        Vieja: { tracks: [{ vid: 'aaaaaaaaaaa', name: 'Canción' }], at: Date.now() - 86400000, dirty: false }
+      } }));
+    }""", email)
+    phone.open()
+    expect(page.locator("#authT")).to_have_text("Crea tu cuenta")
+    expect(page.locator("#authMsg")).to_contain_text("Regístrate otra vez")
+    expect(page.locator("#authEmail")).to_have_value(email)
+
+    fill(page, "#authPass", STRONG)
+    page.click("#authGo")
+    expect(page.locator("#auth")).to_be_hidden()
+    tab(page, "listas")
+    expect(page.locator("#lsList li[data-n='Vieja'] small")).to_contain_text("1 canciones")
+    expect(page.locator("#lsList li[data-n='Vieja'] small")).not_to_contain_text("sin subir")   # ya subió a la cuenta nueva
 
 
 # ---------- Navegación ----------

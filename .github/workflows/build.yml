@@ -2,7 +2,7 @@ name: Compilar APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'prueba-*']   # las ramas prueba-* compilan un APK para probar, sin publicarlo
   workflow_dispatch:
 
 permissions:
@@ -67,6 +67,7 @@ jobs:
       # Cada versión es una publicación propia y completa (el APK nunca se reemplaza a medias).
       # Enlace fijo a la más reciente: …/releases/latest/download/AutoDJ.apk
       - name: Publicar
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

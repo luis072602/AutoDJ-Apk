@@ -1,61 +1,58 @@
-// Inicio de sesión obligatorio. Las cuentas viven en Supabase, que guarda las contraseñas cifradas (hash bcrypt):
-// la app nunca las almacena, solo conserva la «sesión» que Supabase entrega al entrar.
+// Inicio de sesión obligatorio. Las cuentas viven en Neon Auth, que guarda las contraseñas cifradas:
+// la app nunca las almacena. La sesión es una cookie que solo Neon puede leer; en el teléfono queda el correo y el nombre.
 // También: recuperar la contraseña con un código enviado al correo, y el acceso a las tablas de la cuenta (rest()).
 import { $, bus } from './state.js';
 import * as config from './config.js';
 
 const STORE = 'adj_session';
-// En el servidor de pruebas (dev_server.py) se puede forzar con ?cuentas=prueba para ver la pantalla sin Supabase
+// En el servidor de pruebas (dev_server.py) se puede forzar con ?cuentas=prueba para ver la pantalla sin Neon
 const MOCK = new URLSearchParams(location.search).get('cuentas') === 'prueba';
-const URL_ = MOCK ? location.origin : config.SUPABASE_URL, KEY = MOCK ? 'mock' : config.SUPABASE_KEY;
-// Dígitos del código que llega al correo: Supabase deja elegir de 6 a 10 (Authentication → Email → Email OTP Length).
-// La app acepta cualquiera de esos largos.
-const CODE_MIN = 6, CODE_MAX = 10;
-let session = null;   // { refresh, email, name, keep } guardado en el teléfono
+const AUTH = MOCK ? location.origin + '/auth' : config.NEON_AUTH_URL, DATA = MOCK ? location.origin + '/rest/v1' : config.NEON_DATA_URL;
+const CODE_LEN = 6;   // dígitos del código que llega al correo
+let session = null;   // { email, name, keep } guardado en el teléfono
 let access = null;    // { token, exp } solo en memoria: permiso de corta duración para leer y guardar listas
 
-const ERRORS = [
-  [/invalid login credentials/i, 'Correo o contraseña incorrectos'],
-  [/already registered|already been registered|user already exists/i, 'Ya existe una cuenta con ese correo'],
-  [/should be different from the old/i, 'La nueva contraseña debe ser distinta a la anterior'],
-  [/password should be at least|weak password|password.*(contain|characters)/i, 'La contraseña es muy corta o muy fácil de adivinar'],
-  [/valid email|invalid format|email address .* invalid/i, 'Escribe un correo válido'],
-  [/email not confirmed/i, 'Confirma tu correo con el enlace que te enviamos y vuelve a entrar'],
-  [/token has expired|otp.*(expired|invalid)|invalid.*(otp|token)/i, 'El código no es correcto o ya venció'],
-  [/only request this after (\d+) seconds?/i, m => 'Espera ' + m[1] + ' segundos para pedir otro código'],
-  [/error sending|smtp|unable to send/i, 'No se pudo enviar el correo. Inténtalo más tarde'],
-  [/banned/i, 'Esta cuenta fue bloqueada'],
-  [/rate limit|too many/i, 'Demasiados intentos; espera un momento'],
-  [/signups? (are )?(not allowed|disabled)/i, 'El registro de cuentas nuevas está cerrado']
-];
+const ERRORS = {
+  INVALID_EMAIL_OR_PASSWORD: 'Correo o contraseña incorrectos',
+  USER_ALREADY_EXISTS: 'Ya existe una cuenta con ese correo',
+  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: 'Ya existe una cuenta con ese correo',
+  PASSWORD_TOO_SHORT: 'La contraseña es muy corta',
+  PASSWORD_TOO_LONG: 'La contraseña es muy larga',
+  INVALID_EMAIL: 'Escribe un correo válido',
+  EMAIL_NOT_VERIFIED: 'Confirma tu correo y vuelve a entrar',
+  INVALID_OTP: 'El código no es correcto o ya venció',
+  OTP_EXPIRED: 'El código ya venció. Pide uno nuevo',
+  TOO_MANY_ATTEMPTS: 'Demasiados intentos. Pide un código nuevo',
+  BANNED_USER: 'Esta cuenta fue bloqueada',
+  USER_NOT_FOUND: 'No hay ninguna cuenta con ese correo'
+};
 function explain(j, status) {
-  const msg = (j && (j.msg || j.error_description || j.message || j.error)) || '';
-  for (const [re, out] of ERRORS) { const m = msg.match(re); if (m) return typeof out === 'function' ? out(m) : out; }
-  return msg || 'Error ' + status;
+  if (status === 429) return 'Demasiados intentos; espera un momento';
+  return (j && ERRORS[j.code]) || (j && j.message) || 'Error ' + status;
 }
 
-// Petición a Supabase. Lanza Error con .offline si no hubo red, .down si el servicio falló y .status.
-async function call(path, { method = 'POST', body, bearer } = {}) {
+// Petición a Neon Auth. Lanza Error con .offline si no hubo red, .down si el servicio falló y .status.
+async function call(path, { method = 'POST', body } = {}) {
   let r;
   try {
-    r = await fetch(URL_ + path, {
+    r = await fetch(AUTH + path, {
       method,
-      headers: { apikey: KEY, 'Content-Type': 'application/json', ...(bearer && { Authorization: 'Bearer ' + bearer }) },
+      credentials: 'include',   // la sesión viaja en la cookie
+      headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body)
     });
   } catch { throw Object.assign(new Error('Sin conexión a internet'), { offline: true }); }
   const j = await r.json().catch(() => null);
-  // .down: el servicio falló (5xx) o está en pausa; no es culpa de la cuenta
+  // .down: el servicio falló (5xx); no es culpa de la cuenta
   if (!r.ok) throw Object.assign(new Error(explain(j, r.status)), { down: r.status >= 500, status: r.status, code: j && j.code });
-  return j === null ? {} : j;
+  return j;
 }
-const api = (path, body) => call('/auth/v1/' + path, { body });
+const api = (path, body) => call('/' + path, { body });
+const fetchSession = () => call('/get-session', { method: 'GET' });
 
 // «Mantener la sesión»: si no se marca, se olvida al cerrar la app
-function save(s, keep) {
-  const meta = s.user && s.user.user_metadata || {};
-  session = { refresh: s.refresh_token, email: s.user && s.user.email || '', name: meta.name || '', keep };
-  if (s.access_token) access = { token: s.access_token, exp: Date.now() + (s.expires_in || 3600) * 1000 };
+function save(user, keep) {
+  session = { email: user.email || '', name: user.name || '', keep };
   try {
     localStorage.removeItem(STORE); sessionStorage.removeItem(STORE);
     (keep ? localStorage : sessionStorage).setItem(STORE, JSON.stringify(session));
@@ -70,26 +67,25 @@ function forget() {
 }
 
 // ---------- Acceso a las tablas de la cuenta ----------
-// Supabase renueva la sesión en cada uso del permiso largo, así que se hace una sola renovación a la vez
+// La cookie de sesión no sirve para las tablas: se cambia por un permiso que dura 15 minutos, uno a la vez
 let renewing = null;
 async function token() {
   if (!session) throw new Error('Sin sesión');
   if (access && access.exp - Date.now() > 60000) return access.token;
-  renewing = renewing || api('token?grant_type=refresh_token', { refresh_token: session.refresh })
-    .then(s => save(s, session.keep)).finally(() => renewing = null);
+  renewing = renewing || call('/token', { method: 'GET' }).then(j => {
+    access = { token: j.token, exp: JSON.parse(atob(j.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).exp * 1000 };
+  }).finally(() => renewing = null);
   await renewing;
   return access.token;
 }
 export const account = () => session && session.email;
-export const cloudReady = () => !!(URL_ && KEY);
-// rest('playlists?select=*') → filas de la tabla, solo las de esta cuenta (las reglas de Supabase lo aseguran)
-export async function rest(path, { method = 'GET', body, prefer } = {}) {
-  const t = await token();
+export const cloudReady = () => !!(AUTH && DATA);
+async function table(path, t, { method = 'GET', body, prefer } = {}) {
   let r;
   try {
-    r = await fetch(URL_ + '/rest/v1/' + path, {
+    r = await fetch(DATA + '/' + path, {
       method,
-      headers: { apikey: KEY, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json', ...(prefer && { Prefer: prefer }) },
+      headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json', ...(prefer && { Prefer: prefer }) },
       body: body === undefined ? undefined : JSON.stringify(body)
     });
   } catch { throw Object.assign(new Error('Sin conexión a internet'), { offline: true }); }
@@ -97,6 +93,8 @@ export async function rest(path, { method = 'GET', body, prefer } = {}) {
   if (!r.ok) throw Object.assign(new Error(j && j.message || 'Error ' + r.status), { status: r.status, code: j && j.code });
   return j;
 }
+// rest('playlists?select=*') → filas de la tabla, solo las de esta cuenta (las reglas de la base de datos lo aseguran)
+export async function rest(path, opts) { return table(path, await token(), opts); }
 
 // ---------- Reglas de contraseña ----------
 const RULES = [
@@ -152,17 +150,17 @@ async function submit(e) {
   say(mode === 'login' ? 'Entrando…' : 'Creando la cuenta…', true);
   try {
     const s = mode === 'login'
-      ? await api('token?grant_type=password', { email, password })
-      : await api('signup', { email, password, data: { name } });
-    if (s.refresh_token) { save(s, keep); enter(); }
-    else { show('login'); say('Cuenta creada. Confirma tu correo con el enlace que te enviamos y luego entra.', true); }
+      ? await api('sign-in/email', { email, password })
+      : await api('sign-up/email', { email, password, name: name || email.split('@')[0] });
+    save(s.user, keep);
+    enter();
   } catch (err) { say(err.message); }
   $('#authGo').disabled = false;
 }
 
 // ---------- Olvidé mi contraseña ----------
 // Pasos: correo → ¿existe la cuenta? → código al correo → verificar (círculo giratorio) → contraseña nueva
-const R = { step: 'email', email: '', s: null, wait: 0, timer: 0 };
+const R = { step: 'email', email: '', code: '', wait: 0, timer: 0 };
 const rsay = (msg, ok) => say(msg, ok, '#recMsg');
 
 function recStep(step) {
@@ -183,13 +181,15 @@ function openRec() {
   recStep('email');
 }
 
-// ¿Hay una cuenta con este correo? null = no se pudo saber (la función aún no existe en Supabase)
+// ¿Hay una cuenta con este correo? null = no se pudo saber
 async function exists(email) {
-  try { return await call('/rest/v1/rpc/email_exists', { body: { p_email: email } }) === true; }
-  catch (err) { if (err.offline) throw err; return null; }
+  try {
+    const { token: anon } = await call('/token/anonymous', { method: 'GET' });
+    return await table('rpc/email_exists', anon, { method: 'POST', body: { p_email: email } }) === true;
+  } catch (err) { if (err.offline) throw err; return null; }
 }
 
-// Cuenta regresiva para «Reenviar código» (Supabase permite uno por minuto)
+// Cuenta regresiva para «Reenviar código»
 function cooldown(sec) {
   clearInterval(R.timer);
   R.wait = sec;
@@ -202,8 +202,8 @@ function cooldown(sec) {
 }
 
 async function sendCode(again = false) {
-  await api('recover', { email: R.email });
-  $('#recSent').innerHTML = 'Enviamos un código a <b></b>. Puede tardar un minuto; revisa también «Spam».';
+  await api('email-otp/send-verification-otp', { email: R.email, type: 'forget-password' });
+  $('#recSent').innerHTML = 'Enviamos un código a <b></b>. Vale 5 minutos y puede tardar uno en llegar; revisa también «Spam».';
   $('#recSent').querySelector('b').textContent = R.email;
   cooldown(60);
   if (again) rsay('Te enviamos un código nuevo.', true);
@@ -220,16 +220,16 @@ function spin(state) {
 
 async function verify() {
   const code = $('#recCode').value.replace(/\D/g, '');
-  if (code.length < CODE_MIN) return rsay('Escribe todos los dígitos del código');
+  if (code.length < CODE_LEN) return rsay('Escribe todos los dígitos del código');
   $('#recGo').disabled = true; $('#recCode').disabled = true;
   rsay('');
   spin('run');
   const started = Date.now();
   let s = null, err = null;
-  try { s = await api('verify', { type: 'recovery', email: R.email, token: code }); } catch (e) { err = e; }
+  try { s = await api('email-otp/check-verification-otp', { email: R.email, type: 'forget-password', otp: code }); } catch (e) { err = e; }
   await new Promise(r => setTimeout(r, Math.max(0, 1200 - (Date.now() - started))));   // que el círculo se alcance a ver
-  if (s && s.access_token) {
-    R.s = s;
+  if (s && s.success) {
+    R.code = code;
     spin('ok');
     setTimeout(() => { spin(null); recStep('pass'); }, 900);
   } else {
@@ -266,9 +266,11 @@ async function recSubmit(e) {
   else if (passTyped()) {
     btn.disabled = true; rsay('Guardando…', true);
     try {
-      await call('/auth/v1/user', { method: 'PUT', body: { password: $('#recPass').value }, bearer: R.s.access_token });
-      save(R.s, $('#authKeep').checked);
-      R.s = null;
+      const password = $('#recPass').value;
+      await api('email-otp/reset-password', { email: R.email, otp: R.code, password });
+      const s = await api('sign-in/email', { email: R.email, password });
+      save(s.user, $('#authKeep').checked);
+      R.code = '';
       $('#recPass').value = ''; $('#recPass2').value = '';
       enter();
       $('#log').textContent = 'Contraseña cambiada. ¡Bienvenido de nuevo!';
@@ -285,11 +287,9 @@ function initRec() {
   };
   // Al completar el código se verifica solo
   $('#recCode').oninput = e => {
-    const v = e.target.value.replace(/\D/g, '').slice(0, CODE_MAX);
+    const v = e.target.value.replace(/\D/g, '').slice(0, CODE_LEN);
     if (e.target.value !== v) e.target.value = v;
-    // Como el largo puede variar, se verifica al dejar de escribir un momento (o al llegar al máximo)
-    clearTimeout(R.typing);
-    if (v.length >= CODE_MIN && R.step === 'code') R.typing = setTimeout(verify, v.length === CODE_MAX ? 0 : 900);
+    if (v.length === CODE_LEN && R.step === 'code') verify();
   };
   $('#recPass').oninput = passTyped;
   $('#recPass2').oninput = passTyped;
@@ -299,28 +299,55 @@ function initRec() {
   });
 }
 
-// Al abrir la app: si hay sesión guardada se valida con Supabase. Si la cuenta fue borrada o bloqueada, vuelve al login.
+// Las cuentas de antes de pasar a Neon no se pudieron traer: hay que registrarse otra vez.
+// Sus listas siguen en el teléfono; una sola vez se marcan como pendientes para subirlas a la cuenta nueva con ese mismo correo.
+function keepOldLists() {
+  try {
+    if (localStorage.getItem('adj_neon')) return;
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k.startsWith('adj_lists:')) continue;
+      const j = JSON.parse(localStorage.getItem(k));
+      Object.values(j.lists || {}).forEach(l => { l.dirty = true; });
+      localStorage.setItem(k, JSON.stringify(j));
+    }
+    localStorage.setItem('adj_neon', '1');
+  } catch {}
+}
+// Las sesiones anteriores a Neon traen «refresh»
+function oldAccount(saved) {
+  forget();
+  show('signup');
+  $('#authEmail').value = saved.email || '';
+  say('Renovamos las cuentas. Regístrate otra vez con tu correo: tus listas de este teléfono se conservan.', true);
+}
+
+// Al abrir la app: si hay sesión guardada se valida con Neon. Si la cuenta fue borrada o bloqueada, vuelve al login.
 // Sin internet se deja pasar con la sesión guardada (de todos modos sin red no hay música que buscar).
 export async function initAuth() {
-  if (!URL_ || !KEY) return;   // aún sin configurar: la app no pide sesión
+  if (!AUTH || !DATA) return;   // aún sin configurar: la app no pide sesión
   $('#authForm').onsubmit = submit;
   $('#authSwap').onclick = () => show($('#auth').dataset.mode === 'login' ? 'signup' : 'login');
   $('#authPass').oninput = e => { if ($('#auth').dataset.mode === 'signup') checkRules($('#authRules'), e.target.value); };
   $('#logout').onclick = () => {
+    api('sign-out', {}).catch(() => {});
     forget(); $('#account').hidden = true;
     bus.dispatchEvent(new Event('logout'));
     show('login');
   };
   initRec();
+  keepOldLists();
 
   session = load();
   if (!session) return show('login');
+  if (session.refresh) return oldAccount(session);
   try {
-    save(await api('token?grant_type=refresh_token', { refresh_token: session.refresh }), session.keep);
+    const s = await fetchSession();
+    if (!s || !s.user) { forget(); show('login'); return say('Tu sesión terminó. Vuelve a entrar.'); }
+    save(s.user, session.keep);
     enter();
   } catch (err) {
-    if (err.offline || err.down) return enter();   // sin red o con Supabase caído no se echa a nadie
-    const blocked = err.message === 'Esta cuenta fue bloqueada';
-    forget(); show('login'); say(blocked ? err.message : 'Tu sesión terminó. Vuelve a entrar.');
+    if (err.offline || err.down) return enter();   // sin red o con Neon caído no se echa a nadie
+    forget(); show('login'); say(err.message === ERRORS.BANNED_USER ? err.message : 'Tu sesión terminó. Vuelve a entrar.');
   }
 }

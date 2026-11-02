@@ -1,4 +1,4 @@
-// Listas guardadas y la cola, guardadas en la cuenta (tabla «playlists» de Supabase).
+// Listas guardadas y la cola, guardadas en la cuenta (tabla «playlists» de Neon).
 //
 // También se guarda una copia en el teléfono: sin internet se sigue viendo todo, y lo que se cambie
 // sin red se sube al volver la conexión. La cola actual es la lista especial «__cola__», que no se muestra:
@@ -12,7 +12,7 @@ const QUEUE = '__cola__';
 let user = null;           // correo de la cuenta abierta (la copia del teléfono es por cuenta)
 let lists = {};            // nombre → { tracks, at, dirty }  (dirty = cambiado aquí, falta subirlo)
 let gone = [];             // borradas aquí que falta borrar en la cuenta
-let cloud = 'wait';        // 'ok' | 'offline' | 'setup' (falta crear la tabla en Supabase) | 'wait'
+let cloud = 'wait';        // 'ok' | 'offline' | 'setup' (falta crear la tabla en Neon) | 'wait'
 let restored = false;      // la cola ya se recuperó: desde ahí se guarda sola
 
 const KEY = () => 'adj_lists:' + user;

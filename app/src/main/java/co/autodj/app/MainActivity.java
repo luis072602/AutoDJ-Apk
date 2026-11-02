@@ -10,6 +10,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -49,6 +50,8 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
+        // La sesión de la cuenta es una cookie de Neon, un dominio distinto al de la interfaz
+        CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
 
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -81,6 +84,12 @@ public class MainActivity extends Activity {
 
         setContentView(web);
         web.loadUrl("https://" + HOST + "/www/index.html");
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        CookieManager.getInstance().flush();   // que la sesión sobreviva si Android cierra la app
     }
 
     @Override
